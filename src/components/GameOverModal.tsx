@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player, GameMode } from '../game/types';
 import { submitScore } from '../game/leaderboard';
-import { RotateCcw, Trophy, Send, Check, Sparkles } from 'lucide-react';
+import { RotateCcw, Trophy, Send, Check, Sparkles, MapPin } from 'lucide-react';
 
 interface GameOverModalProps {
   player: Player;
   mode: GameMode;
   levelId: number;
+  hasCheckpoint?: boolean;
+  onRespawnCheckpoint?: () => void;
   onRestart: () => void;
   onOpenLeaderboard: (highlightId?: string) => void;
   onOpenCharacterSelect?: () => void;
@@ -17,6 +19,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   player,
   mode,
   levelId,
+  hasCheckpoint,
+  onRespawnCheckpoint,
   onRestart,
   onOpenLeaderboard,
   onOpenCharacterSelect,
@@ -28,6 +32,19 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [rankResult, setRankResult] = useState<number | null>(null);
+
+  // Keyboard shortcut listener for R (Replay) and Space (Save initial/Respawn)
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        onRestart();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onRestart]);
 
   const handleSubmitScore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,12 +147,22 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
         {/* Action Buttons */}
         <div className="space-y-2">
+          {hasCheckpoint && onRespawnCheckpoint && (
+            <button
+              onClick={onRespawnCheckpoint}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-pixel font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(16,185,129,0.4)] transition-colors cursor-pointer"
+            >
+              <MapPin className="w-4 h-4" />
+              CONTINUE FROM CHECKPOINT
+            </button>
+          )}
+
           <button
             onClick={onRestart}
             className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-pixel font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(6,182,212,0.4)] transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
-            PLAY AGAIN
+            PLAY AGAIN (PRESS R)
           </button>
 
           {onOpenCharacterSelect && (

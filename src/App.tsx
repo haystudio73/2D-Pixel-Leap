@@ -52,6 +52,12 @@ import {
   subscribeSettings, 
   GameSettings 
 } from './game/settings';
+import {
+  saveCheckpoint,
+  getSavedCheckpoint,
+  clearSavedCheckpoint,
+  hasSavedCheckpoint
+} from './game/checkpoints';
 
 // UI Components
 import { HUD } from './components/HUD';
@@ -180,6 +186,20 @@ export default function App() {
 
     s.player = createInitialPlayer(levelData.playerStart.x, levelData.playerStart.y);
     s.player.characterSkinId = selectedSkinId;
+    s.player.onGround = false;
+    s.player.isJumping = false;
+    s.player.standingOnPlatformId = null;
+
+    s.input = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      jump: false,
+      jumpPressed: false,
+      dash: false,
+      dashPressed: false,
+    };
 
     // Deep clone level assets so mutations don't dirty static data
     s.platforms = JSON.parse(JSON.stringify(levelData.platforms));
@@ -190,12 +210,15 @@ export default function App() {
     s.particles = [];
     s.floatingTexts = [];
     s.ghostTrails = [];
-    s.camera = { x: 0, y: 0, shake: 0, shakeDecay: 18 };
+    s.camera = { x: levelData.playerStart.x - 200, y: levelData.playerStart.y - 200, shake: 0, shakeDecay: 18 };
     s.currentBiome = levelData.biome;
     s.weather = createInitialWeather(levelData.biome, false);
     s.lastCheckpoint = { x: levelData.playerStart.x, y: levelData.playerStart.y };
     s.endlessState = null;
+    s.lastTime = 0;
+    s.hudSyncTimer = 0;
 
+    setHudPlayer({ ...s.player });
     setHudBiome(levelData.biome);
     setHudLevelName(levelData.name);
     setHudWeather({ ...s.weather });
@@ -209,6 +232,21 @@ export default function App() {
 
     s.player = createInitialPlayer(80, 360);
     s.player.characterSkinId = selectedSkinId;
+    s.player.onGround = false;
+    s.player.isJumping = false;
+    s.player.standingOnPlatformId = null;
+
+    s.input = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      jump: false,
+      jumpPressed: false,
+      dash: false,
+      dashPressed: false,
+    };
+
     s.platforms = endless.platforms;
     s.collectibles = endless.collectibles;
     s.enemies = endless.enemies;
@@ -217,12 +255,15 @@ export default function App() {
     s.particles = [];
     s.floatingTexts = [];
     s.ghostTrails = [];
-    s.camera = { x: 0, y: 0, shake: 0, shakeDecay: 18 };
+    s.camera = { x: -100, y: 150, shake: 0, shakeDecay: 18 };
     s.endlessState = endless;
     s.currentBiome = 'CYBER_CITY';
     s.weather = createInitialWeather('CYBER_CITY', true);
     s.lastCheckpoint = { x: 80, y: 360 };
+    s.lastTime = 0;
+    s.hudSyncTimer = 0;
 
+    setHudPlayer({ ...s.player });
     setHudBiome('CYBER_CITY');
     setHudLevelName('Endless Odyssey');
     setHudWeather({ ...s.weather });
@@ -237,6 +278,21 @@ export default function App() {
 
     s.player = createInitialPlayer(80, 360);
     s.player.characterSkinId = selectedSkinId;
+    s.player.onGround = false;
+    s.player.isJumping = false;
+    s.player.standingOnPlatformId = null;
+
+    s.input = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      jump: false,
+      jumpPressed: false,
+      dash: false,
+      dashPressed: false,
+    };
+
     s.platforms = endless.platforms;
     s.collectibles = [];
     s.enemies = [];
@@ -249,6 +305,8 @@ export default function App() {
     s.endlessState = endless;
     s.currentBiome = targetBiome;
     s.weather = createInitialWeather(targetBiome, true);
+    s.lastTime = 0;
+    s.hudSyncTimer = 0;
     if (biome) {
       setTitleStageBiome(biome);
     }
@@ -303,7 +361,43 @@ export default function App() {
         inp.left = true;
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         inp.right = true;
-      } else if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') {
+      } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        if (!inp.jump) {
+          inp.jumpPressed = true;
+        }
+        inp.jump = true;
+        e.preventDefault();
+      } else if (e.code === 'Space') {
+        // Space key: if any modal is open, save & close it; otherwise jump
+        if (showSettings) {
+          setShowSettings(false);
+          setIsMuted(sound.isMuted);
+          e.preventDefault();
+          return;
+        }
+        if (showAudioSettings) {
+          setShowAudioSettings(false);
+          setIsMuted(sound.isMuted);
+          e.preventDefault();
+          return;
+        }
+        if (showCharacterSelect) {
+          setShowCharacterSelect(false);
+          e.preventDefault();
+          return;
+        }
+        if (showLevelSelect) {
+          setShowLevelSelect(false);
+          e.preventDefault();
+          return;
+        }
+        if (showLeaderboard) {
+          setShowLeaderboard(false);
+          setHighlightLeaderboardId(undefined);
+          e.preventDefault();
+          return;
+        }
+
         if (!inp.jump) {
           inp.jumpPressed = true;
         }
@@ -316,6 +410,12 @@ export default function App() {
           inp.dashPressed = true;
         }
         inp.dash = true;
+      } else if (e.code === 'KeyR') {
+        // R key for Instant Replay / Restart
+        if (gameState === 'PLAYING' || gameState === 'PAUSED' || gameState === 'GAME_OVER' || gameState === 'LEVEL_CLEAR') {
+          e.preventDefault();
+          handleRestart();
+        }
       } else if (e.code === 'KeyC') {
         // Quick toggle Character Customization Screen
         setShowCharacterSelect((prev) => !prev);
@@ -350,13 +450,34 @@ export default function App() {
       }
     };
 
+    const handleWindowMouseUp = (e: MouseEvent) => {
+      if (e.button === 0) {
+        sim.current.input.jump = false;
+        sim.current.input.jumpPressed = false;
+      } else if (e.button === 2) {
+        sim.current.input.dash = false;
+        sim.current.input.dashPressed = false;
+      }
+    };
+
+    const handleWindowContextMenu = (e: MouseEvent) => {
+      if (gameState === 'PLAYING') {
+        e.preventDefault();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    window.addEventListener('contextmenu', handleWindowContextMenu);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+      window.removeEventListener('contextmenu', handleWindowContextMenu);
     };
-  }, [gameState]);
+  }, [gameState, showSettings, showAudioSettings, showCharacterSelect, showLevelSelect, showLeaderboard, currentLevelId, gameMode]);
 
   // Touch Input Controls for Mobile
   const handleTouchInputDown = (key: keyof InputState) => {
@@ -388,23 +509,29 @@ export default function App() {
   // Main Game Loop with Hardware FPS Throttling & Profiling
   useEffect(() => {
     let animId: number;
-    let lastFrameTime = performance.now();
+    let lastFrameTime = 0;
     let framesThisSecond = 0;
     let fpsTimer = performance.now();
 
     const gameLoop = (timestamp: number) => {
       animId = requestAnimationFrame(gameLoop);
 
+      if (!lastFrameTime) {
+        lastFrameTime = timestamp;
+        return;
+      }
+
+      const rawElapsed = timestamp - lastFrameTime;
+
       // Hardware FPS Limiter Check
       const targetFps = settingsRef.current.fpsTarget;
       if (targetFps > 0) {
         const minFrameInterval = 1000 / targetFps;
-        if (timestamp - lastFrameTime < minFrameInterval - 1.5) {
+        if (rawElapsed < minFrameInterval - 1.5) {
           return; // Skip execution to maintain target framerate
         }
       }
 
-      const elapsed = timestamp - lastFrameTime;
       lastFrameTime = timestamp;
 
       // Real-time FPS Monitor Counter
@@ -416,10 +543,8 @@ export default function App() {
       }
 
       const s = sim.current;
-      if (!s.lastTime) s.lastTime = timestamp;
-
-      const rawDt = elapsed / 1000;
-      const dt = Math.min(rawDt, 0.05);
+      const rawDt = Math.min(rawElapsed / 1000, 0.05);
+      const dt = Math.max(0.001, rawDt);
       s.lastTime = timestamp;
       s.totalTime += dt;
 
@@ -472,7 +597,8 @@ export default function App() {
           s.ghostTrails,
           dt,
           !!s.endlessState,
-          s.camera
+          s.camera,
+          s.lastCheckpoint
         );
 
         s.input.jumpPressed = false;
@@ -481,6 +607,15 @@ export default function App() {
         // Handle Checkpoint
         if (physicsResult.reachedCheckpoint) {
           s.lastCheckpoint = { x: s.player.x, y: s.player.y };
+          saveCheckpoint(gameMode, currentLevelId, {
+            levelId: currentLevelId,
+            mode: gameMode,
+            x: s.player.x,
+            y: s.player.y,
+            score: s.player.score,
+            coins: s.player.coins,
+            lives: s.player.lives,
+          });
         }
 
         // Handle Player Death
@@ -655,8 +790,94 @@ export default function App() {
     sound.startBgm();
   };
 
+  // Respawn from Checkpoint
+  const handleRespawnCheckpoint = () => {
+    const saved = getSavedCheckpoint(gameMode, currentLevelId);
+    if (saved) {
+      sound.init();
+      sound.stopMenuBgm();
+      setIsMenuMusicPlaying(false);
+      if (gameMode === 'endless') {
+        loadEndlessMode();
+        // Forward generate endless chunks around the checkpoint position
+        const s = sim.current;
+        if (s.endlessState) {
+          s.endlessState.lastGeneratedX = saved.x - 100;
+          updateEndlessLevel(s.endlessState, saved.x);
+          s.platforms = s.endlessState.platforms;
+          s.collectibles = s.endlessState.collectibles;
+          s.enemies = s.endlessState.enemies;
+          s.checkpoints = s.endlessState.checkpoints;
+          s.currentBiome = s.endlessState.currentBiome;
+        }
+      } else {
+        loadCampaignLevel(currentLevelId);
+      }
+      const s = sim.current;
+      s.player.x = saved.x;
+      s.player.y = saved.y;
+      s.player.score = saved.score;
+      s.player.coins = saved.coins;
+      s.player.lives = 3; // Full fresh lives on checkpoint continue
+      s.player.vx = 0;
+      s.player.vy = 0;
+      s.player.onGround = true;
+      s.player.isJumping = false;
+      s.player.standingOnPlatformId = null;
+      s.player.invulnerableTimer = 2.5;
+      s.lastCheckpoint = { x: saved.x, y: saved.y };
+      s.lastTime = 0;
+
+      // Always ensure a solid safety platform exists directly underneath the checkpoint
+      const checkpointPlatId = `cp_checkpoint_plat_${Math.floor(saved.x)}`;
+      const hasPlatUnderneath = s.platforms.some(
+        (p) => !p.isFallen &&
+               (p.type === 'SOLID' || p.type === 'MOVING' || p.type === 'ONE_WAY') &&
+               p.x <= saved.x + 40 &&
+               p.x + p.width >= saved.x &&
+               p.y >= saved.y + s.player.height - 10 &&
+               p.y <= saved.y + s.player.height + 50
+      );
+      if (!hasPlatUnderneath) {
+        s.platforms.unshift({
+          id: checkpointPlatId,
+          x: saved.x - 120,
+          y: saved.y + s.player.height,
+          width: 320,
+          height: 40,
+          type: 'SOLID',
+        });
+      }
+
+      // Ensure active checkpoint flag is present
+      const matchingCp = s.checkpoints.find((cp) => Math.abs(cp.x - saved.x) < 180);
+      if (matchingCp) {
+        matchingCp.activated = true;
+      } else {
+        s.checkpoints.push({
+          id: `cp_checkpoint_flag_${Math.floor(saved.x)}`,
+          x: saved.x - 20,
+          y: saved.y - 20,
+          width: 28,
+          height: 60,
+          activated: true,
+        });
+      }
+
+      // Smooth camera position to checkpoint
+      s.camera.x = s.player.x - 300;
+      s.camera.y = s.player.y - 200;
+
+      setGameState('PLAYING');
+      sound.startBgm();
+    } else {
+      handleRestart();
+    }
+  };
+
   // Next Campaign Level
   const handleNextLevel = () => {
+    clearSavedCheckpoint('campaign', currentLevelId);
     const nextId = currentLevelId + 1;
     if (CAMPAIGN_LEVELS.some((l) => l.id === nextId)) {
       loadCampaignLevel(nextId);
@@ -670,6 +891,36 @@ export default function App() {
         sound.startMenuBgm();
         setIsMenuMusicPlaying(true);
       }
+    }
+  };
+
+  // Mouse Controls (Left Click = Jump, Right Click = Dash)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (gameState !== 'PLAYING') return;
+    if (e.button === 0) {
+      // Left Click: Jump
+      sim.current.input.jump = true;
+      sim.current.input.jumpPressed = true;
+    } else if (e.button === 2) {
+      // Right Click: Dash
+      sim.current.input.dash = true;
+      sim.current.input.dashPressed = true;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      sim.current.input.jump = false;
+      sim.current.input.jumpPressed = false;
+    } else if (e.button === 2) {
+      sim.current.input.dash = false;
+      sim.current.input.dashPressed = false;
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (gameState === 'PLAYING') {
+      e.preventDefault();
     }
   };
 
@@ -688,10 +939,15 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden flex items-center justify-center select-none font-sans">
       {/* Game Canvas Container */}
-      <div className="relative w-full h-full max-w-[1920px] max-h-[1080px] flex items-center justify-center">
+      <div 
+        className="relative w-full h-full max-w-[1920px] max-h-[1080px] flex items-center justify-center"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onContextMenu={handleContextMenu}
+      >
         <canvas
           ref={canvasRef}
-          className="w-full h-full object-contain pixelated cursor-default shadow-2xl bg-neutral-950"
+          className="w-full h-full object-contain pixelated cursor-pointer shadow-2xl bg-neutral-950"
         />
 
         {/* CRT Scanline & Retro Phosphor Overlay (Hardware Settings Controlled) */}
@@ -776,6 +1032,8 @@ export default function App() {
             player={sim.current.player}
             mode={gameMode}
             levelId={currentLevelId}
+            hasCheckpoint={hasSavedCheckpoint(gameMode, currentLevelId)}
+            onRespawnCheckpoint={handleRespawnCheckpoint}
             onRestart={handleRestart}
             onOpenLeaderboard={(id) => {
               setHighlightLeaderboardId(id);

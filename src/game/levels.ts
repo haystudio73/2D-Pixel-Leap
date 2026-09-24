@@ -342,27 +342,34 @@ export function createInitialEndlessState(): EndlessLevelState {
 }
 
 export function updateEndlessLevel(state: EndlessLevelState, playerX: number) {
+  // If player respawned backwards or generator is out of sync, resynchronize
+  if (state.lastGeneratedX > playerX + 3500 || state.lastGeneratedX < playerX - 400) {
+    state.lastGeneratedX = playerX + 100;
+  }
+
   // Generate chunks as player moves forward with safety guard
   let chunkIterations = 0;
-  while (state.lastGeneratedX < playerX + 1600 && chunkIterations < 30) {
+  while (state.lastGeneratedX < playerX + 1800 && chunkIterations < 30) {
     chunkIterations++;
     generateEndlessChunk(state);
   }
 
-  // Despawn off-screen elements behind player to prevent memory leaks and keep 60fps
-  const cullX = playerX - 800;
-  state.platforms = state.platforms.filter((p) => p.x + p.width > cullX);
+  // Despawn off-screen elements behind player to prevent memory leaks while keeping 60fps
+  const cullX = playerX - 1000;
+  if (state.platforms.length > 8) {
+    state.platforms = state.platforms.filter((p) => p.x + p.width > cullX);
+  }
   state.collectibles = state.collectibles.filter((c) => c.x + c.width > cullX && !c.collected);
   state.enemies = state.enemies.filter((e) => e.x + e.width > cullX && e.alive);
   state.checkpoints = state.checkpoints.filter((cp) => cp.x + cp.width > cullX);
 
-  // Dynamic biome cycling every ~1500m
+  // Dynamic biome cycling every ~1200m
   const distMeters = Math.floor(playerX / 10);
-  if (distMeters > 3500) {
+  if (distMeters >= 3600) {
     state.currentBiome = 'STARLIGHT_CITADEL';
-  } else if (distMeters > 2200) {
+  } else if (distMeters >= 2400) {
     state.currentBiome = 'VOLCANIC_CORE';
-  } else if (distMeters > 1000) {
+  } else if (distMeters >= 1200) {
     state.currentBiome = 'CRYSTAL_CAVERN';
   } else {
     state.currentBiome = 'CYBER_CITY';
@@ -557,8 +564,8 @@ export function generateEndlessChunk(state: EndlessLevelState) {
     }
 
     // Power-up chance
-    if (Math.random() < 0.35) {
-      const powerUps: PowerUpType[] = ['SHIELD', 'SPEED_DASH', 'DOUBLE_JUMP'];
+    if (Math.random() < 0.45) {
+      const powerUps: PowerUpType[] = ['SHIELD', 'SPEED_DASH', 'DOUBLE_JUMP', 'COIN_MAGNET', 'TIME_WARP'];
       state.collectibles.push({
         id: `end_${chunkId}_pw`,
         x: chunkX + platW / 2 - 11,
@@ -601,7 +608,22 @@ export function generateEndlessChunk(state: EndlessLevelState) {
       });
     }
 
-    // Checkpoint gate every ~1000m
+    // Power-up / Heart chance on safe platform
+    if (Math.random() < 0.30) {
+      const bonusItems: (PowerUpType | 'HEART')[] = ['DOUBLE_JUMP', 'SPEED_DASH', 'COIN_MAGNET', 'SHIELD', 'TIME_WARP', 'HEART'];
+      state.collectibles.push({
+        id: `end_${chunkId}_bonus`,
+        x: chunkX + platW - 40,
+        y: platY - 50,
+        width: 22,
+        height: 22,
+        type: bonusItems[Math.floor(Math.random() * bonusItems.length)],
+        collected: false,
+        animOffset: 0.5,
+      });
+    }
+
+    // Checkpoint gate every ~1000m with guaranteed solid floor
     if (Math.floor(chunkX / 1000) > Math.floor((chunkX - platW - gap) / 1000)) {
       state.checkpoints.push({
         id: `end_${chunkId}_cp`,
@@ -610,6 +632,15 @@ export function generateEndlessChunk(state: EndlessLevelState) {
         width: 28,
         height: 60,
         activated: false,
+      });
+      // Sturdy safety base directly under checkpoint
+      state.platforms.push({
+        id: `end_${chunkId}_cp_base`,
+        x: chunkX + platW - 80,
+        y: platY,
+        width: 120,
+        height: 36,
+        type: 'SOLID',
       });
     }
 

@@ -15,6 +15,8 @@ export type AudioEngineMode = 'wav_pack' | 'chiptune_synth';
 export type BgmTrackOption = 'cyber_odyssey' | 'neon_pulse' | 'cyber_funk' | 'start_menu' | 'auto';
 export type TouchControlsMode = 'auto' | 'always' | 'never';
 
+export type GpuMode = 'high-performance' | 'power-saving' | 'software';
+
 export interface GameSettings {
   version: number;
   
@@ -29,6 +31,8 @@ export interface GameSettings {
   lowPowerMode: boolean;
   ghostTrailsEnabled: boolean;
   showFpsCounter: boolean;
+  gpuAcceleration: boolean;
+  gpuMode: GpuMode;
 
   // Audio System
   isMuted: boolean;
@@ -59,6 +63,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   lowPowerMode: false,
   ghostTrailsEnabled: true,
   showFpsCounter: false,
+  gpuAcceleration: true,
+  gpuMode: 'high-performance',
 
   // Audio Defaults
   isMuted: false,
@@ -209,4 +215,38 @@ export function subscribeSettings(callback: (settings: GameSettings) => void): (
   return () => {
     listeners.delete(callback);
   };
+}
+
+export interface GpuInfo {
+  renderer: string;
+  vendor: string;
+  supported: boolean;
+}
+
+/**
+ * Detect GPU hardware device model and vendor for hardware acceleration
+ */
+export function detectGpuHardware(): GpuInfo {
+  if (typeof document === 'undefined') {
+    return { renderer: 'Default Hardware GPU', vendor: 'GPU Device', supported: true };
+  }
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        return {
+          renderer: typeof renderer === 'string' && renderer.length > 0 ? renderer : 'Hardware Accelerated GPU',
+          vendor: typeof vendor === 'string' && vendor.length > 0 ? vendor : 'Graphics Device',
+          supported: true,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[Settings] WebGL GPU detection failed:', e);
+  }
+  return { renderer: 'Direct3D / Metal / Vulkan Hardware Layer', vendor: 'Standard GPU', supported: true };
 }

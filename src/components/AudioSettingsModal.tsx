@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sound } from '../game/audio';
 import { Volume2, VolumeX, Music, X, Play, Square, SkipForward } from 'lucide-react';
 
@@ -12,6 +12,18 @@ export const AudioSettingsModal: React.FC<AudioSettingsModalProps> = ({ onClose 
   const [sfxVol, setSfxVol] = useState(sound.sfxVolume);
   const [isPlaying, setIsPlaying] = useState(sound.isPlaying());
   const [currentTrack, setCurrentTrack] = useState(sound.getCurrentTrackName());
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.code === 'Space' || e.code === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
 
   const tracks = sound.getTrackNames();
 
@@ -160,9 +172,9 @@ export const AudioSettingsModal: React.FC<AudioSettingsModalProps> = ({ onClose 
 
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-neutral-900 border border-neutral-700 hover:border-neutral-500 text-neutral-300 text-xs font-pixel transition-colors cursor-pointer"
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-bold text-xs font-pixel shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-colors cursor-pointer"
           >
-            DONE
+            SAVE & CLOSE (SPACE)
           </button>
         </div>
       </div>

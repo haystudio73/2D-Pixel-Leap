@@ -1337,31 +1337,76 @@ export class GameRenderer {
     if (player.activePowerUps.SHIELD > 0) {
       ctx.save();
       const shieldHue = (totalTime * 180) % 360;
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 20;
       ctx.shadowColor = `hsl(${shieldHue}, 100%, 65%)`;
       ctx.strokeStyle = `hsl(${shieldHue}, 100%, 75%)`;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(0, 0, player.height * 0.75, 0, Math.PI * 2);
+      ctx.arc(0, 0, player.height * 0.78, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Orbiting plasma shield sparks
+      for (let s = 0; s < 3; s++) {
+        const sAngle = totalTime * 5 + (s * Math.PI * 2) / 3;
+        const sx = Math.cos(sAngle) * (player.height * 0.78);
+        const sy = Math.sin(sAngle) * (player.height * 0.78);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      }
       ctx.restore();
     }
 
     if (player.activePowerUps.COIN_MAGNET > 0) {
-      const pulseRad = 16 + (totalTime * 40) % 20;
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
-      ctx.lineWidth = 1.5;
+      ctx.save();
+      const pulseRad = 20 + (totalTime * 45) % 24;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#a855f7';
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.7)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(0, 0, pulseRad, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Second outer magnetic ring
+      ctx.strokeStyle = 'rgba(192, 132, 252, 0.35)';
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseRad + 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     if (player.activePowerUps.SPEED_DASH > 0) {
       ctx.save();
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 16;
       ctx.shadowColor = '#f59e0b';
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
-      ctx.fillRect(px - 4, py - 4, player.width + 8, player.height + 8);
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
+      ctx.fillRect(px - 5, py - 5, player.width + 10, player.height + 10);
+      // Fiery trailing particles
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px - 5, py - 5, player.width + 10, player.height + 10);
+      ctx.restore();
+    }
+
+    if (player.activePowerUps.TIME_WARP > 0) {
+      ctx.save();
+      const chronoPulse = Math.sin(totalTime * 6) * 4;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = '#06b6d4';
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, player.height * 0.85 + chronoPulse, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Matrix binary clock tick marks
+      for (let h = 0; h < 8; h++) {
+        const hAngle = (h * Math.PI * 2) / 8 + totalTime * 2;
+        const hx = Math.cos(hAngle) * (player.height * 0.85 + chronoPulse);
+        const hy = Math.sin(hAngle) * (player.height * 0.85 + chronoPulse);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(hx - 1.5, hy - 1.5, 3, 3);
+      }
       ctx.restore();
     }
 
@@ -1656,13 +1701,31 @@ export class GameRenderer {
     // --- ACCESSORY: WING BOOTS AERIAL WINGS ---
     if (hasDoubleJumpWing) {
       ctx.save();
-      ctx.shadowBlur = 10;
+      const wingFlap = Math.sin(totalTime * 14) * 6;
+      ctx.shadowBlur = 14;
       ctx.shadowColor = '#38bdf8';
       ctx.fillStyle = '#38bdf8';
+
+      // Left Wing (3 feathers)
       ctx.beginPath();
-      ctx.moveTo(px + 2 + jitterX, py + 26);
-      ctx.lineTo(px - 4 + jitterX, py + 22);
-      ctx.lineTo(px + 2 + jitterX, py + 24);
+      ctx.moveTo(px + 4 + jitterX, py + 22);
+      ctx.lineTo(px - 14 + jitterX, py + 14 + wingFlap);
+      ctx.lineTo(px - 10 + jitterX, py + 22 + wingFlap * 0.5);
+      ctx.lineTo(px - 6 + jitterX, py + 26);
+      ctx.closePath();
+      ctx.fill();
+
+      // Wing Highlight Line
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Right Wing Tip
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(px + 16 + jitterX, py + 22);
+      ctx.lineTo(px + 26 + jitterX, py + 16 + wingFlap);
+      ctx.lineTo(px + 20 + jitterX, py + 24);
       ctx.closePath();
       ctx.fill();
       ctx.restore();

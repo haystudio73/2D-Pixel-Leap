@@ -78,6 +78,7 @@ export function createInitialPlayer(x = 100, y = 300): Player {
     },
     animFrame: 0,
     animTimer: 0,
+    standingOnPlatformId: null,
   };
 }
 
@@ -85,6 +86,7 @@ export interface PhysicsUpdateResult {
   playerDied: boolean;
   levelCompleted: boolean;
   reachedCheckpoint: boolean;
+  activeCheckpoint?: { x: number; y: number } | null;
 }
 
 /**
@@ -115,7 +117,8 @@ export function updatePhysics(
   ghostTrails: GhostTrail[],
   dt: number,
   isEndless: boolean,
-  camera?: Camera
+  camera?: Camera,
+  lastCheckpoint?: { x: number; y: number } | null
 ): PhysicsUpdateResult {
   const result: PhysicsUpdateResult = {
     playerDied: false,
@@ -123,8 +126,8 @@ export function updatePhysics(
     reachedCheckpoint: false,
   };
 
-  // Time warp factor
-  const timeFactor = player.activePowerUps.TIME_WARP > 0 ? 0.55 : 1.0;
+  // Time warp factor: 30% slow motion for obstacles/enemies
+  const timeFactor = player.activePowerUps.TIME_WARP > 0 ? 0.30 : 1.0;
 
   // Power-up timers countdown
   (Object.keys(player.activePowerUps) as (keyof typeof player.activePowerUps)[]).forEach((key) => {
@@ -162,34 +165,35 @@ export function updatePhysics(
     player.coyoteTimer -= dt;
   }
 
-  // Speed multiplier from Speed Dash power-up
-  const speedBoost = player.activePowerUps.SPEED_DASH > 0 ? 1.35 : 1.0;
+  // Speed multiplier from Speed Dash power-up (+60% super sprint)
+  const speedBoost = player.activePowerUps.SPEED_DASH > 0 ? 1.60 : 1.0;
   const currentMoveSpeed = MOVE_SPEED * speedBoost;
 
   // --- DASH LOGIC ---
   if (input.dashPressed && player.dashCooldown <= 0 && !player.isDashing) {
+    const hasSpeedDash = player.activePowerUps.SPEED_DASH > 0;
     player.isDashing = true;
-    player.dashDuration = DASH_TIME;
-    player.dashCooldown = player.activePowerUps.SPEED_DASH > 0 ? DASH_COOLDOWN * 0.6 : DASH_COOLDOWN;
+    player.dashDuration = hasSpeedDash ? DASH_TIME * 1.3 : DASH_TIME;
+    player.dashCooldown = hasSpeedDash ? 0.12 : DASH_COOLDOWN; // Instant chain-dash when buffed
     player.dashDirection = player.facing === 'right' ? 1 : -1;
     player.vy = 0; // Freeze vertical during dash
-    player.vx = player.dashDirection * DASH_SPEED * (player.activePowerUps.SPEED_DASH > 0 ? 1.25 : 1.0);
-    player.squashX = 1.6;
-    player.squashY = 0.6;
+    player.vx = player.dashDirection * DASH_SPEED * (hasSpeedDash ? 1.45 : 1.0);
+    player.squashX = 1.8;
+    player.squashY = 0.5;
     sound.playDash();
 
     // Dash puff particles
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < (hasSpeedDash ? 14 : 8); i++) {
       particles.push({
         x: player.x + (player.facing === 'right' ? 0 : player.width),
-        y: player.y + player.height / 2 + (Math.random() - 0.5) * 16,
-        vx: -player.dashDirection * (150 + Math.random() * 200),
-        vy: (Math.random() - 0.5) * 80,
-        size: 3 + Math.random() * 4,
-        color: player.activePowerUps.SPEED_DASH > 0 ? '#f59e0b' : '#38bdf8',
-        alpha: 0.8,
+        y: player.y + player.height / 2 + (Math.random() - 0.5) * 18,
+        vx: -player.dashDirection * (180 + Math.random() * 250),
+        vy: (Math.random() - 0.5) * 100,
+        size: 3 + Math.random() * 5,
+        color: hasSpeedDash ? '#f59e0b' : '#38bdf8',
+        alpha: 0.9,
         life: 0,
-        maxLife: 0.25,
+        maxLife: 0.3,
         glow: true,
       });
     }
@@ -197,19 +201,20 @@ export function updatePhysics(
 
   if (player.isDashing) {
     player.dashDuration -= dt;
-    player.vx = player.dashDirection * DASH_SPEED * (player.activePowerUps.SPEED_DASH > 0 ? 1.25 : 1.0);
+    const hasSpeedDash = player.activePowerUps.SPEED_DASH > 0;
+    player.vx = player.dashDirection * DASH_SPEED * (hasSpeedDash ? 1.45 : 1.0);
     player.vy = 0;
 
     // Leave ghost trails
-    if (Math.random() > 0.3) {
+    if (Math.random() > 0.25) {
       ghostTrails.push({
         x: player.x,
         y: player.y,
         width: player.width,
         height: player.height,
         facing: player.facing,
-        alpha: 0.6,
-        color: player.activePowerUps.SPEED_DASH > 0 ? '#f59e0b' : '#38bdf8',
+        alpha: 0.7,
+        color: hasSpeedDash ? '#f59e0b' : '#38bdf8',
       });
     }
 
@@ -270,6 +275,7 @@ export function updatePhysics(
         // Normal ground jump
         player.vy = JUMP_FORCE;
         player.onGround = false;
+        player.standingOnPlatformId = null;
         player.coyoteTimer = 0;
         player.jumpBufferTimer = 0;
         player.isJumping = true;
@@ -286,17 +292,43 @@ export function updatePhysics(
         player.vy = WALL_JUMP_Y_FORCE;
         player.facing = pushDir > 0 ? 'right' : 'left';
         player.onWall = null;
+        player.standingOnPlatformId = null;
         player.jumpBufferTimer = 0;
         player.isJumping = true;
         player.squashX = 0.8;
         player.squashY = 1.3;
         sound.playJump();
-      } else if (
-        (player.canDoubleJump || player.activePowerUps.DOUBLE_JUMP > 0) &&
-        !player.hasDoubleJumped
-      ) {
-        // Double jump!
+      } else if (player.activePowerUps.DOUBLE_JUMP > 0) {
+        // Multi-Air Jump / Flight when Wing Boots power-up is active!
+        player.vy = DOUBLE_JUMP_FORCE * 1.12; // -650px/s super flight leap
+        player.standingOnPlatformId = null;
+        player.jumpBufferTimer = 0;
+        player.isJumping = true;
+        player.squashX = 0.65;
+        player.squashY = 1.45;
+        player.hasDoubleJumped = false; // Never locks out during power-up!
+        sound.playDoubleJump();
+
+        // Spawn sparkling cyber/angel wings air burst
+        for (let i = 0; i < 14; i++) {
+          const angle = (i / 14) * Math.PI * 2;
+          particles.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height * 0.7,
+            vx: Math.cos(angle) * 150,
+            vy: Math.sin(angle) * 80 + 30,
+            size: 3.5,
+            color: '#38bdf8',
+            alpha: 1,
+            life: 0,
+            maxLife: 0.4,
+            glow: true,
+          });
+        }
+      } else if (player.canDoubleJump && !player.hasDoubleJumped) {
+        // Normal single double jump!
         player.vy = DOUBLE_JUMP_FORCE;
+        player.standingOnPlatformId = null;
         player.jumpBufferTimer = 0;
         player.isJumping = true;
         player.squashX = 0.7;
@@ -330,12 +362,12 @@ export function updatePhysics(
     }
   }
 
-  // --- UPDATE MOVING & CRUMBLING PLATFORMS ---
-  let carriedVx = 0;
-  let carriedVy = 0;
-
+    // --- UPDATE MOVING & CRUMBLING PLATFORMS ---
   platforms.forEach((plat) => {
     if (plat.type === 'MOVING') {
+      const prevX = plat.x;
+      const prevY = plat.y;
+
       plat.progress = (plat.progress ?? 0) + (plat.speed ?? 1.5) * dt * (plat.direction ?? 1) * timeFactor;
       if (plat.progress >= 1) {
         plat.progress = 1;
@@ -344,20 +376,38 @@ export function updatePhysics(
         plat.progress = 0;
         plat.direction = 1;
       }
-      const prevX = plat.x;
-      const prevY = plat.y;
       plat.x = (plat.startX ?? plat.x) + ((plat.targetX ?? plat.x) - (plat.startX ?? plat.x)) * plat.progress;
       plat.y = (plat.startY ?? plat.y) + ((plat.targetY ?? plat.y) - (plat.startY ?? plat.y)) * plat.progress;
 
-      // If player is standing on this platform, carry them
-      if (
+      const platDx = plat.x - prevX;
+      const platDy = plat.y - prevY;
+
+      // Check if player is standing on this moving platform
+      const isHorizontallyOnPlat =
+        player.x + player.width >= plat.x + 2 &&
+        player.x <= plat.x + plat.width - 2;
+
+      const isVerticallyNearPlat =
+        Math.abs((player.y + player.height) - prevY) <= 8 ||
+        Math.abs((player.y + player.height) - plat.y) <= 8;
+
+      const isStandingOnThis =
         player.onGround &&
-        player.x + player.width > plat.x &&
-        player.x < plat.x + plat.width &&
-        Math.abs(player.y + player.height - plat.y) < 4
-      ) {
-        carriedVx = (plat.x - prevX) / dt;
-        carriedVy = (plat.y - prevY) / dt;
+        !player.isJumping &&
+        player.vy >= 0 &&
+        isHorizontallyOnPlat &&
+        isVerticallyNearPlat;
+
+      if (isStandingOnThis) {
+        player.standingOnPlatformId = plat.id;
+        player.onGround = true;
+
+        // Auto move player along with moving object precisely to prevent drop
+        player.x += platDx;
+        player.y = plat.y - player.height;
+        player.vy = 0;
+      } else if (player.standingOnPlatformId === plat.id) {
+        player.standingOnPlatformId = null;
       }
     } else if (plat.type === 'CRUMBLING') {
       if (plat.isCrumbling && !plat.isFallen) {
@@ -393,7 +443,7 @@ export function updatePhysics(
   });
 
   // --- RESOLVE PLATFORM COLLISIONS (X & Y Axis Separation) ---
-  player.x += (player.vx + carriedVx) * dt;
+  player.x += player.vx * dt;
 
   // X-Collision
   player.onWall = null;
@@ -432,7 +482,7 @@ export function updatePhysics(
 
   // Y-Movement
   const preLandVy = player.vy;
-  player.y += (player.vy + carriedVy) * dt;
+  player.y += player.vy * dt;
   const wasOnGround = player.onGround;
   player.onGround = false;
 
@@ -457,7 +507,7 @@ export function updatePhysics(
         height: plat.height - 6,
       };
       if (checkAABB(playerRectY, spikeHitbox)) {
-        handlePlayerDamage(player, floatingTexts, particles, result, camera);
+        handlePlayerDamage(player, floatingTexts, particles, result, camera, false, lastCheckpoint, platforms);
       }
       return;
     }
@@ -468,6 +518,7 @@ export function updatePhysics(
         player.vy = SPRING_FORCE;
         player.onGround = false;
         player.hasDoubleJumped = false;
+        player.standingOnPlatformId = null;
         plat.isCompressed = true;
         plat.compressTimer = 0.22;
         sound.playSpring();
@@ -496,7 +547,7 @@ export function updatePhysics(
 
     if (plat.type === 'ONE_WAY') {
       // Can only land on top if moving downwards and previously above
-      const prevBottom = player.y + player.height - (player.vy + carriedVy) * dt;
+      const prevBottom = player.y + player.height - player.vy * dt;
       if (
         player.vy >= 0 &&
         prevBottom <= plat.y + 8 &&
@@ -508,6 +559,7 @@ export function updatePhysics(
           player.vy = 0;
           player.onGround = true;
           player.isJumping = false;
+          player.standingOnPlatformId = null;
 
           // Landing impact on one-way platform
           if (!wasOnGround) {
@@ -542,6 +594,7 @@ export function updatePhysics(
         player.vy = 0;
         player.onGround = true;
         player.isJumping = false;
+        player.standingOnPlatformId = plat.type === 'MOVING' ? plat.id : null;
 
         // Trigger crumbling
         if (plat.type === 'CRUMBLING' && !plat.isCrumbling) {
@@ -585,20 +638,47 @@ export function updatePhysics(
   });
 
   // --- BOTTOM PIT CHECK ---
-  if (player.y > 1000) {
-    handlePlayerDamage(player, floatingTexts, particles, result, camera, true);
+  if (player.y > 960) {
+    if (player.activePowerUps.SHIELD > 0) {
+      // Emergency Shield Jet Thruster Rocket Rescue!
+      player.activePowerUps.SHIELD = 0;
+      player.invulnerableTimer = 2.0;
+      player.vy = -1050; // Super high launch back into the arena
+      player.y = 520;
+      player.standingOnPlatformId = null;
+      player.isJumping = true;
+      player.onGround = false;
+      player.hasDoubleJumped = false;
+      sound.playSpring();
+      triggerDynamicScreenShake(camera, 14.0, 16);
+
+      floatingTexts.push({
+        id: Math.random().toString(),
+        text: 'SHIELD JET RESCUE!',
+        x: player.x - 30,
+        y: player.y - 20,
+        color: '#10b981',
+        alpha: 1,
+        life: 0,
+        vy: -90,
+      });
+      spawnSparkles(player.x, player.y, '#10b981', particles, 24);
+    } else {
+      handlePlayerDamage(player, floatingTexts, particles, result, camera, true, lastCheckpoint, platforms);
+    }
   }
 
   // --- DISTANCE & SCORE UPDATE ---
   const currentDist = Math.max(player.distance, Math.floor(player.x / 10));
+  const isBuffed2x = player.activePowerUps.SHIELD > 0 || player.activePowerUps.TIME_WARP > 0;
   if (currentDist > player.distance) {
     const delta = currentDist - player.distance;
     player.distance = currentDist;
-    player.score += delta * (player.activePowerUps.SHIELD > 0 ? 2 : 1);
+    player.score += delta * (isBuffed2x ? 2 : 1);
   }
 
   // --- COLLECTIBLES INTERACTION ---
-  const magnetRange = player.activePowerUps.COIN_MAGNET > 0 ? 280 : 0;
+  const magnetRange = player.activePowerUps.COIN_MAGNET > 0 ? 580 : 0; // Huge 580px vortex magnet
   const playerCenter = {
     x: player.x + player.width / 2,
     y: player.y + player.height / 2,
@@ -613,7 +693,7 @@ export function updatePhysics(
       const dy = playerCenter.y - (item.y + item.height / 2);
       const dist = Math.hypot(dx, dy);
       if (dist < magnetRange && dist > 1) {
-        const pullSpeed = 480 * (1 - dist / magnetRange);
+        const pullSpeed = 750 * Math.max(0.3, 1 - dist / magnetRange);
         item.x += (dx / dist) * pullSpeed * dt;
         item.y += (dy / dist) * pullSpeed * dt;
       }
@@ -622,14 +702,15 @@ export function updatePhysics(
     const itemRect: Rect = { x: item.x, y: item.y, width: item.width, height: item.height };
     if (checkAABB(player, itemRect)) {
       item.collected = true;
+      const scoreMult = isBuffed2x ? 2 : 1;
 
       if (item.type === 'COIN') {
         player.coins += 1;
-        player.score += 100;
+        player.score += 100 * scoreMult;
         sound.playCoin();
         floatingTexts.push({
           id: Math.random().toString(),
-          text: '+100',
+          text: isBuffed2x ? '+200 (2X)!' : '+100',
           x: item.x,
           y: item.y,
           color: '#fbbf24',
@@ -640,11 +721,11 @@ export function updatePhysics(
         spawnSparkles(item.x, item.y, '#fbbf24', particles);
       } else if (item.type === 'GEM') {
         player.coins += 5;
-        player.score += 500;
+        player.score += 500 * scoreMult;
         sound.playGem();
         floatingTexts.push({
           id: Math.random().toString(),
-          text: '+500 GEM!',
+          text: isBuffed2x ? '+1000 GEM (2X)!' : '+500 GEM!',
           x: item.x,
           y: item.y,
           color: '#38bdf8',
@@ -652,16 +733,18 @@ export function updatePhysics(
           life: 0,
           vy: -70,
         });
-        spawnSparkles(item.x, item.y, '#38bdf8', particles, 12);
+        spawnSparkles(item.x, item.y, '#38bdf8', particles, 14);
       } else if (item.type === 'HEART') {
         if (player.lives < player.maxLives) {
           player.lives += 1;
+        } else {
+          player.score += 500; // Bonus score if already max lives
         }
-        player.score += 250;
+        player.score += 250 * scoreMult;
         sound.playPowerUp();
         floatingTexts.push({
           id: Math.random().toString(),
-          text: '+1 LIFE!',
+          text: player.lives >= player.maxLives ? '+500 FULL HEALTH!' : '+1 LIFE!',
           x: item.x,
           y: item.y,
           color: '#ef4444',
@@ -669,24 +752,24 @@ export function updatePhysics(
           life: 0,
           vy: -60,
         });
-        spawnSparkles(item.x, item.y, '#ef4444', particles);
+        spawnSparkles(item.x, item.y, '#ef4444', particles, 12);
       } else {
         // Power-up item collected!
         const pType = item.type as keyof typeof player.activePowerUps;
-        player.activePowerUps[pType] = 12; // 12 seconds duration
-        player.score += 300;
+        player.activePowerUps[pType] = 15; // 15 seconds duration
+        player.score += 400 * scoreMult;
         sound.playPowerUp();
         floatingTexts.push({
           id: Math.random().toString(),
-          text: `${pType.replace('_', ' ')}!`,
-          x: item.x - 20,
+          text: `${pType.replace('_', ' ')} (15s)!`,
+          x: item.x - 25,
           y: item.y - 10,
           color: '#a855f7',
           alpha: 1,
           life: 0,
           vy: -80,
         });
-        spawnSparkles(item.x, item.y, '#a855f7', particles, 16);
+        spawnSparkles(item.x, item.y, '#a855f7', particles, 18);
       }
     }
   });
@@ -767,7 +850,7 @@ export function updatePhysics(
         spawnSparkles(enemy.x, enemy.y, '#10b981', particles, 14);
       } else {
         // Take damage from enemy
-        handlePlayerDamage(player, floatingTexts, particles, result, camera);
+        handlePlayerDamage(player, floatingTexts, particles, result, camera, false, lastCheckpoint, platforms);
       }
     }
   });
@@ -820,7 +903,9 @@ function handlePlayerDamage(
   particles: Particle[],
   result: PhysicsUpdateResult,
   camera?: Camera,
-  instantPit = false
+  instantPit = false,
+  lastCheckpoint?: { x: number; y: number } | null,
+  platforms?: Platform[]
 ) {
   if (player.invulnerableTimer > 0 && !instantPit) return;
 
@@ -866,7 +951,55 @@ function handlePlayerDamage(
   });
   spawnSparkles(player.x, player.y, '#ef4444', particles, 12);
 
-  if (player.lives <= 0 || instantPit) {
+  if (player.lives > 0) {
+    // If fell into a pit or took lethal damage but has lives left, safely teleport back to last save point
+    if (instantPit) {
+      const respawnX = lastCheckpoint?.x ?? 80;
+      const respawnY = lastCheckpoint?.y ?? 360;
+      player.x = respawnX;
+      player.y = respawnY;
+      player.vx = 0;
+      player.vy = 0;
+      player.isDashing = false;
+      player.standingOnPlatformId = null;
+      player.onGround = true;
+
+      // Always ensure a solid safety platform exists directly underneath the checkpoint
+      if (platforms) {
+        const checkpointPlatId = `cp_safe_plat_${Math.floor(respawnX)}`;
+        const hasPlatUnderneath = platforms.some(
+          (p) => !p.isFallen &&
+                 (p.type === 'SOLID' || p.type === 'MOVING' || p.type === 'ONE_WAY') &&
+                 p.x <= respawnX + 20 &&
+                 p.x + p.width >= respawnX &&
+                 p.y >= respawnY + player.height - 10 &&
+                 p.y <= respawnY + player.height + 40
+        );
+        if (!hasPlatUnderneath) {
+          platforms.push({
+            id: checkpointPlatId,
+            x: respawnX - 90,
+            y: respawnY + player.height,
+            width: 240,
+            height: 36,
+            type: 'SOLID',
+          });
+        }
+      }
+
+      floatingTexts.push({
+        id: Math.random().toString(),
+        text: 'RESPAWNED AT CHECKPOINT!',
+        x: respawnX - 30,
+        y: respawnY - 20,
+        color: '#22c55e',
+        alpha: 1,
+        life: 0,
+        vy: -70,
+      });
+      spawnSparkles(respawnX, respawnY, '#22c55e', particles, 16);
+    }
+  } else {
     result.playerDied = true;
     sound.playGameOver();
   }

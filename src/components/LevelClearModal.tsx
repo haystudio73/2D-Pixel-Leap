@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Player } from '../game/types';
 import { Sparkles, ArrowRight, RotateCcw, Trophy } from 'lucide-react';
 
@@ -21,6 +21,25 @@ export const LevelClearModal: React.FC<LevelClearModalProps> = ({
   onOpenCharacterSelect,
   hasNextLevel,
 }) => {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        onRestartLevel();
+      } else if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        if (hasNextLevel) {
+          onNextLevel();
+        } else {
+          onOpenLeaderboard();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [hasNextLevel, onNextLevel, onRestartLevel, onOpenLeaderboard]);
+
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
       <div className="bg-neutral-950 border-2 border-emerald-500/80 w-full max-w-md p-6 shadow-[0_0_30px_rgba(16,185,129,0.3)] text-center">
@@ -61,7 +80,7 @@ export const LevelClearModal: React.FC<LevelClearModalProps> = ({
               onClick={onNextLevel}
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-pixel font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(16,185,129,0.4)] transition-colors cursor-pointer"
             >
-              NEXT STAGE
+              NEXT STAGE (SPACE)
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
@@ -70,7 +89,7 @@ export const LevelClearModal: React.FC<LevelClearModalProps> = ({
               className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-pixel font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(245,158,11,0.4)] transition-colors cursor-pointer"
             >
               <Trophy className="w-4 h-4" />
-              VIEW HALL OF FAME
+              VIEW HALL OF FAME (SPACE)
             </button>
           )}
 
@@ -90,7 +109,7 @@ export const LevelClearModal: React.FC<LevelClearModalProps> = ({
               className="py-2.5 bg-neutral-900 border border-neutral-700 hover:border-neutral-500 text-neutral-200 font-pixel text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              REPLAY STAGE
+              REPLAY STAGE (R)
             </button>
             <button
               onClick={onOpenLeaderboard}

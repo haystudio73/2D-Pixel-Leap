@@ -117,7 +117,29 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
     sound.powerupCollect();
     setSelectedCharacterId(activeChar.id);
     onSelectSkin(activeChar.id);
+    onClose();
   };
+
+  // Keyboard Space / Escape handler to equip & close or exit
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (isCurrentUnlocked && !isCurrentEquipped) {
+          handleEquip();
+        } else {
+          onClose();
+        }
+      } else if (e.code === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isOpen, isCurrentUnlocked, isCurrentEquipped, activeChar, onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
@@ -299,17 +321,17 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
             <div className="mt-4 pt-3 border-t border-slate-800">
               {isCurrentEquipped ? (
                 <button
-                  disabled
-                  className="w-full py-2.5 px-4 bg-slate-800 text-cyan-400 font-mono font-bold text-xs rounded-lg border border-cyan-500/30 flex items-center justify-center gap-2 cursor-default"
+                  onClick={onClose}
+                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono font-bold text-xs rounded-lg border border-cyan-500/30 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" /> CURRENTLY EQUIPPED
+                  <CheckCircle2 className="w-4 h-4" /> CURRENTLY EQUIPPED (SPACE TO CLOSE)
                 </button>
               ) : isCurrentUnlocked ? (
                 <button
                   onClick={handleEquip}
                   className="w-full py-2.5 px-4 bg-cyan-500 hover:bg-cyan-400 active:scale-95 text-slate-950 font-mono font-bold text-xs rounded-lg shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4" /> EQUIP CHARACTER
+                  <Sparkles className="w-4 h-4" /> EQUIP CHARACTER (SPACE)
                 </button>
               ) : (
                 <button

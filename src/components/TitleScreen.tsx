@@ -41,49 +41,95 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   const activeChar = getSelectedCharacter();
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-between p-6 sm:p-8 select-none overflow-y-auto">
-      {/* Top Bar / High Score & Active Character */}
-      <div className="w-full max-w-4xl flex items-center justify-between text-xs font-pixel text-neutral-400">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-          <span className="text-emerald-400 text-glow-emerald">ONLINE ARCADE READY</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Start Menu Music Quick Controller */}
-          {onToggleMenuMusic && (
-            <button 
-              onClick={onToggleMenuMusic}
-              className={`flex items-center gap-1.5 px-2.5 py-1 border rounded cursor-pointer transition-all ${
-                isMenuMusicPlaying
-                  ? 'bg-cyan-950/90 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
-                  : 'bg-neutral-900/80 border-neutral-700 text-neutral-400 hover:text-neutral-200'
-              }`}
-              title="Click to play or mute the Start Menu background music"
-            >
-              <Music className={`w-3.5 h-3.5 ${isMenuMusicPlaying ? 'text-cyan-400 animate-pulse' : 'text-neutral-500'}`} />
-              <span className="font-pixel text-[10px]">
-                MENU BGM: {isMenuMusicPlaying ? 'PLAYING' : 'MUTED'}
-              </span>
-            </button>
-          )}
-
-          <div 
-            onClick={onOpenCharacterSelect}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-cyan-500/40 hover:border-cyan-400 rounded cursor-pointer transition-colors"
-          >
-            <div 
-              className="w-2.5 h-2.5 rounded-sm"
-              style={{ backgroundColor: activeChar.colors.visorGlow }}
-            />
-            <span className="text-cyan-300 font-pixel text-[10px]">
-              HERO: {activeChar.name.split(' ')[0]}
-            </span>
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-between p-4 sm:p-6 select-none overflow-y-auto">
+      {/* Top Menu Bar: Stage Background Selector, Audio Controls, Hero Customization */}
+      <div className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-2.5 text-xs font-pixel text-neutral-400">
+        {/* Left Side: Arcade Status & Stage Background Theme Selector (Moved to Top Menu) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-neutral-900/90 border border-neutral-800 rounded">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+            <span className="text-emerald-400 text-glow-emerald text-[10px]">ARCADE READY</span>
           </div>
 
+          {/* Stage Background Theme Selector */}
+          {onSelectBiome && (
+            <div className="flex items-center gap-1 bg-neutral-950/90 border border-neutral-800/90 p-1 rounded">
+              <span className="hidden sm:flex items-center gap-1 text-[9px] text-cyan-400 px-1 font-pixel">
+                <Layers className="w-3 h-3 text-cyan-400" /> STAGE:
+              </span>
+              <div className="flex items-center gap-1">
+                {STAGE_OPTIONS.map((opt) => {
+                  const isActive = activeBiome === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => onSelectBiome(opt.id)}
+                      className={`px-2 py-0.5 border text-[9px] font-pixel transition-all cursor-pointer rounded-xs flex items-center gap-1 ${
+                        isActive
+                          ? `${opt.bg} text-white font-bold ring-1 ring-white/50 shadow-[0_0_10px_rgba(255,255,255,0.25)]`
+                          : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                      }`}
+                      title={`Switch background to ${opt.label}`}
+                    >
+                      <span className="opacity-60 text-[8px]">#{opt.num}</span>
+                      <span style={{ color: isActive ? '#ffffff' : opt.color }}>
+                        {opt.label.split(' ')[0]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Side: Audio Button, Hero Skins, Personal Best (Moved to Top Menu) */}
+        <div className="flex items-center gap-2">
+          {/* Audio Controls (Combines BGM toggle & Audio settings modal trigger) */}
+          <div className="flex items-center bg-neutral-900/90 border border-neutral-800 rounded overflow-hidden">
+            {onToggleMenuMusic && (
+              <button
+                onClick={onToggleMenuMusic}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-pixel transition-colors cursor-pointer border-r border-neutral-800 ${
+                  isMenuMusicPlaying
+                    ? 'bg-cyan-950/80 text-cyan-300'
+                    : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+                title={isMenuMusicPlaying ? 'Mute Menu BGM' : 'Play Menu BGM'}
+              >
+                <Music className={`w-3 h-3 ${isMenuMusicPlaying ? 'text-cyan-400 animate-pulse' : 'text-neutral-500'}`} />
+                <span>{isMenuMusicPlaying ? 'BGM ON' : 'BGM OFF'}</span>
+              </button>
+            )}
+            <button
+              onClick={onOpenAudioSettings}
+              className="px-2.5 py-1 text-[10px] font-pixel text-neutral-300 hover:text-cyan-300 hover:bg-neutral-800/60 transition-colors cursor-pointer"
+              title="Open Audio Settings"
+            >
+              AUDIO
+            </button>
+          </div>
+
+          {/* Hero Customization / Skins */}
+          <button
+            onClick={onOpenCharacterSelect}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/90 border border-purple-500/50 hover:border-purple-400 rounded cursor-pointer transition-all shadow-[0_0_10px_rgba(168,85,247,0.25)] hover:shadow-[0_0_15px_rgba(168,85,247,0.45)] group"
+            title="Click to customize hero skins"
+          >
+            <div 
+              className="w-2.5 h-2.5 rounded-sm shadow-[0_0_6px_currentColor]"
+              style={{ backgroundColor: activeChar.colors.visorGlow }}
+            />
+            <span className="text-purple-300 group-hover:text-purple-200 font-pixel text-[10px]">
+              HERO: {activeChar.name.split(' ')[0]}
+            </span>
+            <Sparkles className="w-3 h-3 text-amber-400" />
+          </button>
+
+          {/* Best Score */}
           {personalBest > 0 && (
-            <div className="flex items-center gap-1.5 text-yellow-400 text-glow-amber">
-              <Flame className="w-3.5 h-3.5 fill-yellow-400" />
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-neutral-900/80 border border-amber-500/30 rounded text-yellow-400 text-glow-amber text-[10px]">
+              <Flame className="w-3 h-3 fill-yellow-400" />
               <span>BEST: {personalBest.toLocaleString()}</span>
             </div>
           )}
@@ -91,12 +137,12 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       </div>
 
       {/* Hero Title Section */}
-      <div className="my-auto flex flex-col items-center text-center py-6">
+      <div className="my-auto flex flex-col items-center text-center py-4">
         {/* Animated Pixel Hero Icon */}
         <div 
           onClick={onOpenCharacterSelect}
-          className="relative mb-6 cursor-pointer group"
-          title="Click to customize character"
+          className="relative mb-5 cursor-pointer group"
+          title="Click to customize character skins"
         >
           <div 
             className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-950/70 border-2 border-cyan-400 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.5)] transform group-hover:scale-110 transition-transform"
@@ -133,47 +179,14 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         </div>
 
         {/* Main Title */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-sky-400 to-indigo-500 tracking-wider mb-3 drop-shadow-[0_0_20px_rgba(6,182,212,0.6)]">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-sky-400 to-indigo-500 tracking-wider mb-2 drop-shadow-[0_0_20px_rgba(6,182,212,0.6)]">
           PIXEL LEAP
         </h1>
-        <p className="text-xs sm:text-sm font-pixel text-neutral-300 tracking-widest max-w-lg mb-5 text-glow-cyan">
+        <p className="text-xs sm:text-sm font-pixel text-neutral-300 tracking-widest max-w-lg mb-6 text-glow-cyan">
           RETRO 2D PLATFORMER ODYSSEY
         </p>
 
-        {/* Stage Background Selector */}
-        {onSelectBiome && (
-          <div className="mb-6 w-full max-w-md bg-neutral-950/85 border border-neutral-800 p-2.5 rounded-sm shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center justify-between text-[9px] font-pixel text-neutral-400 mb-2 px-1">
-              <span className="flex items-center gap-1.5 text-cyan-400">
-                <Layers className="w-3.5 h-3.5" /> STAGE BACKGROUND DESIGN:
-              </span>
-              <span className="text-neutral-500 text-[8px]">SELECT TO SWITCH</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {STAGE_OPTIONS.map((opt) => {
-                const isActive = activeBiome === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => onSelectBiome(opt.id)}
-                    className={`px-2 py-1.5 border text-[9px] font-pixel text-center transition-all cursor-pointer rounded-xs ${
-                      isActive
-                        ? `${opt.bg} text-white font-bold ring-1 ring-white/60 shadow-[0_0_12px_rgba(255,255,255,0.2)]`
-                        : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
-                    }`}
-                  >
-                    <div className="text-[8px] opacity-60 mb-0.5">#{opt.num}</div>
-                    <div className="truncate text-[10px]" style={{ color: isActive ? '#ffffff' : opt.color }}>
-                      {opt.label.split(' ')[0]}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Menu Buttons */}
+        {/* Menu Buttons (Clean, Streamlined, No Clutter) */}
         <div className="w-full max-w-sm space-y-3">
           <button
             onClick={onStartEndless}
@@ -191,35 +204,19 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             <ArrowRight className="w-4 h-4" />
           </button>
 
-          {/* Character Customization Button */}
-          <button
-            onClick={onOpenCharacterSelect}
-            className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-purple-950/80 via-slate-900/90 to-cyan-950/80 border-2 border-purple-500/60 hover:border-purple-400 text-purple-200 hover:text-white font-pixel text-xs flex items-center justify-center gap-2.5 transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
-            <span>CUSTOMIZE HERO ({activeChar.name})</span>
-          </button>
-
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          {/* Secondary Buttons Row: Scores & Config */}
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               onClick={onOpenLeaderboard}
-              className="py-2.5 bg-neutral-900/90 border border-neutral-800 hover:border-yellow-400 text-neutral-300 hover:text-yellow-300 font-pixel text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="py-2.5 bg-neutral-900/90 border border-neutral-800 hover:border-yellow-400 text-neutral-300 hover:text-yellow-300 font-pixel text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Trophy className="w-3.5 h-3.5 text-yellow-400" />
               <span>SCORES</span>
             </button>
 
             <button
-              onClick={onOpenAudioSettings}
-              className="py-2.5 bg-neutral-900/90 border border-neutral-800 hover:border-cyan-400 text-neutral-300 hover:text-cyan-300 font-pixel text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Music className="w-3.5 h-3.5 text-cyan-400" />
-              <span>AUDIO</span>
-            </button>
-
-            <button
               onClick={onOpenSettings || onOpenAudioSettings}
-              className="py-2.5 bg-neutral-900/90 border border-neutral-800 hover:border-purple-400 text-neutral-300 hover:text-purple-300 font-pixel text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="py-2.5 bg-neutral-900/90 border border-neutral-800 hover:border-purple-400 text-neutral-300 hover:text-purple-300 font-pixel text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5 text-purple-400" />
               <span>CONFIG</span>
@@ -237,7 +234,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
         {/* How to Play Guide Drawer */}
         {showHelp && (
-          <div className="mt-6 w-full max-w-lg bg-neutral-950/90 border border-neutral-800 p-4 text-left space-y-4 animate-fade-in shadow-2xl">
+          <div className="mt-5 w-full max-w-lg bg-neutral-950/90 border border-neutral-800 p-4 text-left space-y-4 animate-fade-in shadow-2xl">
             <div>
               <div className="text-[10px] font-pixel text-cyan-400 mb-2">CONTROLS (DESKTOP & MOBILE)</div>
               <div className="grid grid-cols-2 gap-2 text-xs text-neutral-300">
@@ -246,16 +243,16 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                   <span className="text-neutral-400">A / D or Arrow Keys</span>
                 </div>
                 <div className="bg-neutral-900/80 p-2 border border-neutral-800">
-                  <span className="font-pixel text-[10px] text-yellow-400 block">JUMP</span>
-                  <span className="text-neutral-400">Space, W, Up Key</span>
+                  <span className="font-pixel text-[10px] text-yellow-400 block">JUMP / DOUBLE JUMP</span>
+                  <span className="text-neutral-400">🖱️ Left Click / Space / W</span>
                 </div>
                 <div className="bg-neutral-900/80 p-2 border border-neutral-800">
                   <span className="font-pixel text-[10px] text-yellow-400 block">SONIC DASH</span>
-                  <span className="text-neutral-400">Shift, X, or J</span>
+                  <span className="text-neutral-400">🖱️ Right Click / Shift / X</span>
                 </div>
                 <div className="bg-neutral-900/80 p-2 border border-neutral-800">
-                  <span className="font-pixel text-[10px] text-yellow-400 block">DROP THROUGH</span>
-                  <span className="text-neutral-400">S or Down + Jump</span>
+                  <span className="font-pixel text-[10px] text-yellow-400 block">REPLAY / RESTART</span>
+                  <span className="text-neutral-400">Press Key R</span>
                 </div>
               </div>
             </div>
@@ -291,12 +288,6 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Footer Features */}
-      <div className="w-full max-w-4xl flex items-center justify-between text-[10px] font-pixel text-neutral-500">
-        <div>DYNAMIC WEATHER · CUSTOM HEROES</div>
-        <div>WEB AUDIO CHIPTUNE · ONLINE RANKS</div>
       </div>
     </div>
   );

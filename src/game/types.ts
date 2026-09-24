@@ -102,6 +102,7 @@ export interface Player {
   animFrame: number;
   animTimer: number;
   characterSkinId?: string;
+  standingOnPlatformId?: string | null;
 }
 
 export interface Platform {

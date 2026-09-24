@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Play, RotateCcw, Volume2, Music, Trophy, Home, Sparkles, Settings } from 'lucide-react';
 
 interface PauseModalProps {
@@ -20,6 +20,21 @@ export const PauseModal: React.FC<PauseModalProps> = ({
   onOpenCharacterSelect,
   onBackToMenu,
 }) => {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        onRestart();
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        onResume();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onResume, onRestart]);
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in select-none">
       <div className="bg-neutral-950 border-2 border-yellow-500/80 w-full max-w-sm p-6 shadow-[0_0_24px_rgba(245,158,11,0.3)] text-center">
@@ -33,7 +48,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
             className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-pixel font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_12px_rgba(245,158,11,0.4)] transition-colors cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
-            RESUME GAME
+            RESUME GAME (SPACE)
           </button>
 
           <button
@@ -41,7 +56,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
             className="w-full py-2.5 bg-neutral-900 border border-neutral-700 hover:border-neutral-500 text-neutral-200 font-pixel text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            RESTART STAGE
+            RESTART STAGE (R)
           </button>
 
           {onOpenCharacterSelect && (

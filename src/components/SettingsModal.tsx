@@ -59,6 +59,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     setTimeout(() => setSavedNotice(false), 1200);
   };
 
+  // Keyboard Space / Enter / Escape to save & close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (e.code === 'Space' || e.code === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
   // Audio Handlers
   const handleToggleMute = () => {
     const next = !settings.isMuted;
@@ -740,9 +753,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 </button>
               </div>
 
-              {/* Desktop Keybinds Reference Table */}
+              {/* Desktop Keybinds & Mouse Reference Table */}
               <div className="bg-neutral-900/40 border border-neutral-800/80 p-3.5">
-                <div className="text-[11px] font-pixel text-neutral-300 mb-2">KEYBOARD CONTROLS REFERENCE</div>
+                <div className="text-[11px] font-pixel text-neutral-300 mb-2">KEYBOARD & MOUSE CONTROLS REFERENCE</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
                     <span className="font-pixel text-[10px] text-neutral-400">MOVE LEFT / RIGHT</span>
@@ -750,11 +763,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   </div>
                   <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
                     <span className="font-pixel text-[10px] text-neutral-400">JUMP / DOUBLE JUMP</span>
-                    <span className="font-pixel text-yellow-300">SPACE, W, or ⬆️</span>
+                    <span className="font-pixel text-yellow-300">LEFT CLICK / SPACE / W</span>
                   </div>
                   <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
                     <span className="font-pixel text-[10px] text-neutral-400">SONIC DASH</span>
-                    <span className="font-pixel text-amber-300">SHIFT, X, or J</span>
+                    <span className="font-pixel text-amber-300">RIGHT CLICK / SHIFT / X</span>
                   </div>
                   <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
                     <span className="font-pixel text-[10px] text-neutral-400">DROP THROUGH PLATFORM</span>
@@ -765,12 +778,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     <span className="font-pixel text-emerald-300">HOLD WALL + JUMP</span>
                   </div>
                   <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
+                    <span className="font-pixel text-[10px] text-neutral-400">REPLAY / RESTART LEVEL</span>
+                    <span className="font-pixel text-red-300">KEY R</span>
+                  </div>
+                  <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
                     <span className="font-pixel text-[10px] text-neutral-400">CUSTOMIZE HERO (C)</span>
                     <span className="font-pixel text-purple-300">KEY C</span>
                   </div>
                   <div className="p-2 bg-neutral-950 border border-neutral-800 flex justify-between items-center">
-                    <span className="font-pixel text-[10px] text-neutral-400">PAUSE GAME</span>
-                    <span className="font-pixel text-red-300">ESC or KEY P</span>
+                    <span className="font-pixel text-[10px] text-neutral-400">SAVE & CLOSE MODALS</span>
+                    <span className="font-pixel text-emerald-300">SPACE / ESC</span>
                   </div>
                 </div>
               </div>
@@ -815,7 +832,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             onClick={onClose}
             className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-pixel font-bold shadow-[0_0_12px_rgba(6,182,212,0.5)] transition-all cursor-pointer"
           >
-            SAVE & CLOSE
+            SAVE & CLOSE (SPACE)
           </button>
         </div>
       </div>

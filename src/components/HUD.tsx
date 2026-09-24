@@ -178,7 +178,7 @@ export const HUD: React.FC<HUDProps> = ({
         {player.activePowerUps.DOUBLE_JUMP > 0 && (
           <div className="flex items-center gap-2 bg-cyan-950/80 border border-cyan-500/80 px-2.5 py-1 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)] animate-pulse">
             <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[10px] font-pixel">DOUBLE JUMP</span>
+            <span className="text-[10px] font-pixel">FLIGHT JUMP</span>
             <span className="text-[10px] font-pixel text-cyan-200">
               {Math.ceil(player.activePowerUps.DOUBLE_JUMP)}s
             </span>
@@ -198,7 +198,7 @@ export const HUD: React.FC<HUDProps> = ({
         {player.activePowerUps.SHIELD > 0 && (
           <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-500/80 px-2.5 py-1 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)] animate-pulse">
             <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] font-pixel">ENERGY SHIELD</span>
+            <span className="text-[10px] font-pixel">SHIELD (2X SCORE)</span>
             <span className="text-[10px] font-pixel text-emerald-200">
               {Math.ceil(player.activePowerUps.SHIELD)}s
             </span>
@@ -208,12 +208,31 @@ export const HUD: React.FC<HUDProps> = ({
         {player.activePowerUps.COIN_MAGNET > 0 && (
           <div className="flex items-center gap-2 bg-purple-950/80 border border-purple-500/80 px-2.5 py-1 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.4)] animate-pulse">
             <Compass className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-[10px] font-pixel">COIN MAGNET</span>
+            <span className="text-[10px] font-pixel">VORTEX MAGNET</span>
             <span className="text-[10px] font-pixel text-purple-200">
               {Math.ceil(player.activePowerUps.COIN_MAGNET)}s
             </span>
           </div>
         )}
+
+        {player.activePowerUps.TIME_WARP > 0 && (
+          <div className="flex items-center gap-2 bg-indigo-950/80 border border-indigo-500/80 px-2.5 py-1 text-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.4)] animate-pulse">
+            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="text-[10px] font-pixel">TIME WARP (2X)</span>
+            <span className="text-[10px] font-pixel text-indigo-200">
+              {Math.ceil(player.activePowerUps.TIME_WARP)}s
+            </span>
+          </div>
+        )}
+
+        {/* Quick Controls Hint Badge */}
+        <div className="hidden lg:flex items-center gap-2 ml-auto bg-neutral-950/75 border border-neutral-800/80 px-2.5 py-1 text-[9px] font-pixel text-neutral-400">
+          <span className="text-yellow-300">🖱️ L-Click / Space:</span> Jump
+          <span className="text-neutral-600">|</span>
+          <span className="text-amber-300">R-Click / Shift:</span> Dash
+          <span className="text-neutral-600">|</span>
+          <span className="text-red-400">R:</span> Replay
+        </div>
       </div>
     </div>
   );
