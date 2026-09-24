@@ -1,0 +1,6 @@
+{
+  "name": "Pixel Leap: Retro 2D Platformer",
+  "description": "Retro 2D platformer jump game with authentic pixel art physics, parallax backgrounds, glowing power-ups, endless scrolling levels, chiptune soundtrack, and online leaderboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
