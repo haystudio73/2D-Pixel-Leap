@@ -1,5 +1,7 @@
 # 🎮 Pixel Leap: Retro 2D Platformer
 
+<img width="1374" height="766" alt="image" src="https://github.com/user-attachments/assets/7beafc4a-449f-455b-b933-5a235feadafa" />
+
 > **Pixel Leap** là tựa game đi cảnh (2D Platformer) mang phong cách **Cyberpunk Pixel Art** cổ điển kết hợp công nghệ hiện đại. Game sở hữu engine vật lý chính xác, hiệu ứng đồ họa đa lớp Parallax 60 FPS mượt mà, hệ thống bùa lợi phát sáng, chế độ Vô tận với Mini Boss ngẫu nhiên, hệ thống thời tiết sống động, âm thanh Chiptune hoài niệm và Bảng xếp hạng điểm cao trực tuyến.
 
 ---
