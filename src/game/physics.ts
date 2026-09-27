@@ -87,6 +87,11 @@ export interface PhysicsUpdateResult {
   levelCompleted: boolean;
   reachedCheckpoint: boolean;
   activeCheckpoint?: { x: number; y: number } | null;
+  jumpsCount?: number;
+  dashesCount?: number;
+  coinsCollected?: number;
+  enemiesDefeated?: number;
+  powerupsCollected?: number;
 }
 
 /**
@@ -180,6 +185,7 @@ export function updatePhysics(
     player.vx = player.dashDirection * DASH_SPEED * (hasSpeedDash ? 1.45 : 1.0);
     player.squashX = 1.8;
     player.squashY = 0.5;
+    result.dashesCount = (result.dashesCount || 0) + 1;
     sound.playDash();
 
     // Dash puff particles
@@ -281,6 +287,7 @@ export function updatePhysics(
         player.isJumping = true;
         player.squashX = 0.75;
         player.squashY = 1.35;
+        result.jumpsCount = (result.jumpsCount || 0) + 1;
         sound.playJump();
 
         // Jump dust
@@ -297,6 +304,7 @@ export function updatePhysics(
         player.isJumping = true;
         player.squashX = 0.8;
         player.squashY = 1.3;
+        result.jumpsCount = (result.jumpsCount || 0) + 1;
         sound.playJump();
       } else if (player.activePowerUps.DOUBLE_JUMP > 0) {
         // Multi-Air Jump / Flight when Wing Boots power-up is active!
@@ -307,6 +315,7 @@ export function updatePhysics(
         player.squashX = 0.65;
         player.squashY = 1.45;
         player.hasDoubleJumped = false; // Never locks out during power-up!
+        result.jumpsCount = (result.jumpsCount || 0) + 1;
         sound.playDoubleJump();
 
         // Spawn sparkling cyber/angel wings air burst
@@ -334,6 +343,7 @@ export function updatePhysics(
         player.squashX = 0.7;
         player.squashY = 1.4;
         player.hasDoubleJumped = true;
+        result.jumpsCount = (result.jumpsCount || 0) + 1;
         sound.playDoubleJump();
 
         // Double jump ring particles
@@ -521,6 +531,7 @@ export function updatePhysics(
         player.standingOnPlatformId = null;
         plat.isCompressed = true;
         plat.compressTimer = 0.22;
+        result.jumpsCount = (result.jumpsCount || 0) + 1;
         sound.playSpring();
 
         // Spring bounce kinetic shockwave
@@ -707,6 +718,7 @@ export function updatePhysics(
       if (item.type === 'COIN') {
         player.coins += 1;
         player.score += 100 * scoreMult;
+        result.coinsCollected = (result.coinsCollected || 0) + 1;
         sound.playCoin();
         floatingTexts.push({
           id: Math.random().toString(),
@@ -722,6 +734,7 @@ export function updatePhysics(
       } else if (item.type === 'GEM') {
         player.coins += 5;
         player.score += 500 * scoreMult;
+        result.coinsCollected = (result.coinsCollected || 0) + 5;
         sound.playGem();
         floatingTexts.push({
           id: Math.random().toString(),
@@ -758,6 +771,7 @@ export function updatePhysics(
         const pType = item.type as keyof typeof player.activePowerUps;
         player.activePowerUps[pType] = 15; // 15 seconds duration
         player.score += 400 * scoreMult;
+        result.powerupsCollected = (result.powerupsCollected || 0) + 1;
         sound.playPowerUp();
         floatingTexts.push({
           id: Math.random().toString(),
@@ -809,6 +823,7 @@ export function updatePhysics(
       if (player.isDashing) {
         enemy.alive = false;
         player.score += 400;
+        result.enemiesDefeated = (result.enemiesDefeated || 0) + 1;
         sound.playSpring();
         // Dynamic impact shake from dash smash
         triggerDynamicScreenShake(camera, 9.5, 18);
@@ -834,6 +849,7 @@ export function updatePhysics(
         player.vy = -550; // High bounce
         player.hasDoubleJumped = false;
         player.score += 300;
+        result.enemiesDefeated = (result.enemiesDefeated || 0) + 1;
         sound.playSpring();
         // Dynamic downward stomp camera punch
         triggerDynamicScreenShake(camera, 8.5, 20);

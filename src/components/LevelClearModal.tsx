@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Player } from '../game/types';
-import { Sparkles, ArrowRight, RotateCcw, Trophy } from 'lucide-react';
+import { Sparkles, ArrowRight, RotateCcw, Trophy, Award } from 'lucide-react';
 
 interface LevelClearModalProps {
   player: Player;
@@ -9,6 +9,8 @@ interface LevelClearModalProps {
   onRestartLevel: () => void;
   onOpenLeaderboard: () => void;
   onOpenCharacterSelect?: () => void;
+  onOpenDailyMissions?: () => void;
+  claimableMissionsCount?: number;
   hasNextLevel: boolean;
 }
 
@@ -19,6 +21,8 @@ export const LevelClearModal: React.FC<LevelClearModalProps> = ({
   onRestartLevel,
   onOpenLeaderboard,
   onOpenCharacterSelect,
+  onOpenDailyMissions,
+  claimableMissionsCount = 0,
   hasNextLevel,
 }) => {
   useEffect(() => {
@@ -100,6 +104,21 @@ export const LevelClearModal: React.FC<LevelClearModalProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               CUSTOMIZE HERO
+            </button>
+          )}
+
+          {onOpenDailyMissions && (
+            <button
+              onClick={onOpenDailyMissions}
+              className="w-full py-2.5 bg-neutral-900 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-white font-pixel text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>DAILY MISSIONS</span>
+              {claimableMissionsCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-amber-500 text-neutral-950 text-[9px] font-bold rounded-xs animate-bounce">
+                  {claimableMissionsCount} CLAIM
+                </span>
+              )}
             </button>
           )}
 

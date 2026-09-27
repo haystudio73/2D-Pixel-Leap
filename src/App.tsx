@@ -61,6 +61,13 @@ import {
   clearSavedCheckpoint,
   hasSavedCheckpoint
 } from './game/checkpoints';
+import {
+  getWalletBalance,
+  getClaimableMissionsCount,
+  recordMissionProgress,
+  addWalletCredits,
+  MissionProgressEvent
+} from './game/missions';
 
 // UI Components
 import { HUD } from './components/HUD';
@@ -74,6 +81,7 @@ import { GameOverModal } from './components/GameOverModal';
 import { LevelClearModal } from './components/LevelClearModal';
 import { PauseModal } from './components/PauseModal';
 import { CharacterSelectModal } from './components/CharacterSelectModal';
+import { DailyMissionsModal } from './components/DailyMissionsModal';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -105,6 +113,11 @@ export default function App() {
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLevelSelect, setShowLevelSelect] = useState(false);
+  const [showDailyMissions, setShowDailyMissions] = useState(false);
+  const [walletCredits, setWalletCredits] = useState<number>(() => getWalletBalance());
+  const [claimableMissionsCount, setClaimableMissionsCount] = useState<number>(() => getClaimableMissionsCount());
+  const [missionToast, setMissionToast] = useState<{ title: string; reward: number } | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
   const [highlightLeaderboardId, setHighlightLeaderboardId] = useState<string | undefined>();
   const [isMuted, setIsMuted] = useState(sound.isMuted);
   const [isMenuMusicPlaying, setIsMenuMusicPlaying] = useState(sound.isMenuBgmPlaying);
@@ -140,6 +153,7 @@ export default function App() {
     miniBoss: MiniBoss | null;
     bossSpawnTimer: number;
     bossWarningTimer: number;
+    lastTrackedDistance: number;
     lastTime: number;
     totalTime: number;
     hudSyncTimer: number;
@@ -175,6 +189,7 @@ export default function App() {
     miniBoss: null,
     bossSpawnTimer: 180 + Math.random() * 80,
     bossWarningTimer: 0,
+    lastTrackedDistance: 0,
     lastTime: 0,
     totalTime: 0,
     hudSyncTimer: 0,
@@ -233,6 +248,7 @@ export default function App() {
     s.miniBoss = null;
     s.bossSpawnTimer = 0;
     s.bossWarningTimer = 0;
+    s.lastTrackedDistance = 0;
     s.lastTime = 0;
     s.hudSyncTimer = 0;
 
@@ -288,6 +304,7 @@ export default function App() {
     s.miniBoss = null;
     s.bossSpawnTimer = 180 + Math.random() * 80; // Boss in ~3-4.3 minutes
     s.bossWarningTimer = 0;
+    s.lastTrackedDistance = 0;
     s.lastTime = 0;
     s.hudSyncTimer = 0;
 
@@ -342,6 +359,7 @@ export default function App() {
     s.miniBoss = null;
     s.bossSpawnTimer = 0;
     s.bossWarningTimer = 0;
+    s.lastTrackedDistance = 0;
     s.lastTime = 0;
     s.hudSyncTimer = 0;
     if (biome) {
@@ -356,6 +374,26 @@ export default function App() {
     sim.current.player.characterSkinId = newSkinId;
     setHudPlayer((prev) => ({ ...prev, characterSkinId: newSkinId }));
   }, []);
+
+  // Handle Mission Progress Event Triggering & Real-time Toasts
+  const triggerMissionEvent = useCallback((event: MissionProgressEvent) => {
+    const { newlyCompleted, state } = recordMissionProgress(event);
+    if (newlyCompleted.length > 0) {
+      sound.playMissionComplete();
+      const first = newlyCompleted[0];
+      setMissionToast({ title: first.title, reward: first.rewardCredits });
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+      toastTimeoutRef.current = window.setTimeout(() => {
+        setMissionToast(null);
+      }, 4500);
+      setClaimableMissionsCount(getClaimableMissionsCount(state));
+    }
+  }, []);
+
+  const triggerMissionEventRef = useRef(triggerMissionEvent);
+  triggerMissionEventRef.current = triggerMissionEvent;
 
   // Initialize Canvas & Renderer on mount & on resolution scale changes
   useEffect(() => {
@@ -434,6 +472,12 @@ export default function App() {
           e.preventDefault();
           return;
         }
+        if (showDailyMissions) {
+          setShowDailyMissions(false);
+          setClaimableMissionsCount(getClaimableMissionsCount());
+          e.preventDefault();
+          return;
+        }
 
         if (!inp.jump) {
           inp.jumpPressed = true;
@@ -456,6 +500,15 @@ export default function App() {
       } else if (e.code === 'KeyC') {
         // Quick toggle Character Customization Screen
         setShowCharacterSelect((prev) => !prev);
+      } else if (e.code === 'KeyM') {
+        // Quick toggle Daily Missions & Bounties
+        setShowDailyMissions((prev) => {
+          const next = !prev;
+          if (!next) {
+            setClaimableMissionsCount(getClaimableMissionsCount());
+          }
+          return next;
+        });
       } else if (e.code === 'KeyO') {
         // Quick toggle System & Hardware Settings
         setShowSettings((prev) => !prev);
@@ -514,7 +567,7 @@ export default function App() {
       window.removeEventListener('mouseup', handleWindowMouseUp);
       window.removeEventListener('contextmenu', handleWindowContextMenu);
     };
-  }, [gameState, showSettings, showAudioSettings, showCharacterSelect, showLevelSelect, showLeaderboard, currentLevelId, gameMode]);
+  }, [gameState, showSettings, showAudioSettings, showCharacterSelect, showLevelSelect, showLeaderboard, showDailyMissions, currentLevelId, gameMode]);
 
   // Touch Input Controls for Mobile
   const handleTouchInputDown = (key: keyof InputState) => {
@@ -663,6 +716,9 @@ export default function App() {
               s.collectibles.push(...bossRes.drops);
               s.bossSpawnTimer = 180 + Math.random() * 80; // Next boss in 3-4.5 mins
               s.camera.shake = 24;
+
+              // Record Mini Boss Defeat for Daily Missions
+              triggerMissionEventRef.current({ type: 'MINI_BOSS_DEFEATED', count: 1 });
             }
 
             // Handle Player Hit by Boss / Projectiles
@@ -716,6 +772,31 @@ export default function App() {
 
         s.input.jumpPressed = false;
         s.input.dashPressed = false;
+
+        // Daily Missions Progress Event Tracking
+        if (physicsResult.coinsCollected) {
+          triggerMissionEventRef.current({ type: 'COIN_COLLECTED', count: physicsResult.coinsCollected });
+        }
+        if (physicsResult.jumpsCount) {
+          triggerMissionEventRef.current({ type: 'JUMP_PERFORMED', count: physicsResult.jumpsCount });
+        }
+        if (physicsResult.dashesCount) {
+          triggerMissionEventRef.current({ type: 'DASH_PERFORMED', count: physicsResult.dashesCount });
+        }
+        if (physicsResult.enemiesDefeated) {
+          triggerMissionEventRef.current({ type: 'ENEMY_DEFEATED', count: physicsResult.enemiesDefeated });
+        }
+        if (physicsResult.powerupsCollected) {
+          triggerMissionEventRef.current({ type: 'POWERUP_COLLECTED', count: physicsResult.powerupsCollected });
+        }
+        if (physicsResult.levelCompleted) {
+          triggerMissionEventRef.current({ type: 'STAGE_CLEARED', count: 1 });
+        }
+        if (s.player.distance > s.lastTrackedDistance) {
+          const delta = s.player.distance - s.lastTrackedDistance;
+          s.lastTrackedDistance = s.player.distance;
+          triggerMissionEventRef.current({ type: 'DISTANCE_TRAVELED', count: delta });
+        }
 
         // Handle Checkpoint
         if (physicsResult.reachedCheckpoint) {
@@ -1106,6 +1187,9 @@ export default function App() {
               onOpenAudioSettings={() => setShowSettings(true)}
               onOpenSettings={() => setShowSettings(true)}
               onOpenCharacterSelect={() => setShowCharacterSelect(true)}
+              onOpenDailyMissions={() => setShowDailyMissions(true)}
+              claimableMissionsCount={claimableMissionsCount}
+              missionToast={missionToast}
             />
             {/* Mobile Touch Virtual Gamepad */}
             {shouldShowTouch && (
@@ -1126,6 +1210,9 @@ export default function App() {
             onOpenAudioSettings={() => setShowSettings(true)}
             onOpenSettings={() => setShowSettings(true)}
             onOpenCharacterSelect={() => setShowCharacterSelect(true)}
+            onOpenDailyMissions={() => setShowDailyMissions(true)}
+            walletCredits={walletCredits}
+            claimableMissionsCount={claimableMissionsCount}
             personalBest={personalBest}
             activeBiome={titleStageBiome}
             onSelectBiome={(biome) => loadTitleStage(biome)}
@@ -1143,6 +1230,8 @@ export default function App() {
             onOpenSettings={() => setShowSettings(true)}
             onOpenLeaderboard={() => setShowLeaderboard(true)}
             onOpenCharacterSelect={() => setShowCharacterSelect(true)}
+            onOpenDailyMissions={() => setShowDailyMissions(true)}
+            claimableMissionsCount={claimableMissionsCount}
             onBackToMenu={() => {
               loadTitleStage();
               setGameState('TITLE_MENU');
@@ -1169,6 +1258,8 @@ export default function App() {
               setShowLeaderboard(true);
             }}
             onOpenCharacterSelect={() => setShowCharacterSelect(true)}
+            onOpenDailyMissions={() => setShowDailyMissions(true)}
+            claimableMissionsCount={claimableMissionsCount}
             onBackToMenu={() => {
               loadTitleStage();
               setGameState('TITLE_MENU');
@@ -1190,6 +1281,8 @@ export default function App() {
             onRestartLevel={handleRestart}
             onOpenLeaderboard={() => setShowLeaderboard(true)}
             onOpenCharacterSelect={() => setShowCharacterSelect(true)}
+            onOpenDailyMissions={() => setShowDailyMissions(true)}
+            claimableMissionsCount={claimableMissionsCount}
             hasNextLevel={CAMPAIGN_LEVELS.some((l) => l.id === currentLevelId + 1)}
           />
         )}
@@ -1203,6 +1296,20 @@ export default function App() {
           highScore={personalBest}
           maxLevelCleared={maxLevelCleared}
         />
+
+        {/* Daily Missions & Bounties Modal */}
+        {showDailyMissions && (
+          <DailyMissionsModal
+            onClose={() => {
+              setShowDailyMissions(false);
+              setClaimableMissionsCount(getClaimableMissionsCount());
+            }}
+            onBalanceChange={(newBal) => {
+              setWalletCredits(newBal);
+              setClaimableMissionsCount(getClaimableMissionsCount());
+            }}
+          />
+        )}
 
         {/* Level Select Modal */}
         {showLevelSelect && (

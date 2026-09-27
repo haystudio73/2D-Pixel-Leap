@@ -2,7 +2,7 @@ import React from 'react';
 import { Player, BiomeType, WeatherState } from '../game/types';
 import { WEATHER_CONFIGS } from '../game/weather';
 import { getCharacterById } from '../game/characters';
-import { Heart, Volume2, VolumeX, Pause, Music, Zap, Shield, Compass, Sparkles, Clock, User, Settings, Gauge } from 'lucide-react';
+import { Heart, Volume2, VolumeX, Pause, Music, Zap, Shield, Compass, Sparkles, Clock, User, Settings, Gauge, Award } from 'lucide-react';
 
 interface HUDProps {
   player: Player;
@@ -20,6 +20,9 @@ interface HUDProps {
   onOpenAudioSettings: () => void;
   onOpenSettings?: () => void;
   onOpenCharacterSelect?: () => void;
+  onOpenDailyMissions?: () => void;
+  claimableMissionsCount?: number;
+  missionToast?: { title: string; reward: number } | null;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -37,6 +40,9 @@ export const HUD: React.FC<HUDProps> = ({
   onOpenAudioSettings,
   onOpenSettings,
   onOpenCharacterSelect,
+  onOpenDailyMissions,
+  claimableMissionsCount = 0,
+  missionToast,
 }) => {
   const formattedScore = player.score.toString().padStart(6, '0');
   const formattedBest = personalBest.toString().padStart(6, '0');
@@ -145,6 +151,23 @@ export const HUD: React.FC<HUDProps> = ({
               </button>
             )}
 
+            {/* Daily Missions Quick Access Button */}
+            {onOpenDailyMissions && (
+              <button
+                onClick={onOpenDailyMissions}
+                className="relative p-2 bg-neutral-900/90 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-white transition-all cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                title="Daily Missions & Bounties (M)"
+              >
+                <Award className="w-4 h-4 text-amber-400" />
+                {claimableMissionsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
+                )}
+                {claimableMissionsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full" />
+                )}
+              </button>
+            )}
+
             <button
               onClick={onToggleMute}
               className="p-2 bg-neutral-900/90 border border-neutral-700 hover:border-cyan-400 hover:text-cyan-400 text-neutral-300 transition-colors cursor-pointer"
@@ -234,6 +257,36 @@ export const HUD: React.FC<HUDProps> = ({
           <span className="text-red-400">R:</span> Replay
         </div>
       </div>
+
+      {/* Real-Time Mission Completed Toast Alert */}
+      {missionToast && (
+        <div className="mx-auto pointer-events-auto mt-1 px-4 py-2.5 bg-neutral-950/95 border-2 border-amber-400 text-neutral-100 flex items-center gap-3 shadow-[0_0_25px_rgba(245,158,11,0.6)] animate-bounce select-none z-40">
+          <div className="p-1.5 bg-amber-500 text-neutral-950 rounded-xs">
+            <Award className="w-5 h-5 fill-current" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-pixel text-amber-400 uppercase tracking-widest text-glow-amber">
+                MISSION COMPLETED!
+              </span>
+              <span className="text-[10px] font-pixel text-emerald-400 font-bold">
+                +{missionToast.reward} 🪙
+              </span>
+            </div>
+            <div className="text-xs font-pixel text-white mt-0.5">
+              {missionToast.title}
+            </div>
+          </div>
+          {onOpenDailyMissions && (
+            <button
+              onClick={onOpenDailyMissions}
+              className="ml-3 px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-pixel font-bold text-[9px] cursor-pointer shadow-md transition-all rounded-xs"
+            >
+              CLAIM [M]
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

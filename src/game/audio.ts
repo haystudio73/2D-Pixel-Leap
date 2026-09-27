@@ -626,6 +626,44 @@ class SoundEngine {
     });
   }
 
+  public playMissionComplete() {
+    if (!this.ensureContext() || this.isMuted) return;
+    const t = this.ctx!.currentTime;
+    // Triumphant 4-note arpeggio (C5 -> E5 -> G5 -> C6)
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.09);
+      gain.gain.setValueAtTime(0.32, t + idx * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + idx * 0.09 + (idx === 3 ? 0.35 : 0.15));
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t + idx * 0.09);
+      osc.stop(t + idx * 0.09 + (idx === 3 ? 0.35 : 0.15));
+    });
+  }
+
+  public playClaimReward() {
+    if (!this.ensureContext() || this.isMuted) return;
+    const t = this.ctx!.currentTime;
+    // Sparkling coin shower chime
+    const notes = [987.77, 1318.51, 1567.98, 2093.0];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.06);
+      gain.gain.setValueAtTime(0.35, t + idx * 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.005, t + idx * 0.06 + 0.22);
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t + idx * 0.06);
+      osc.stop(t + idx * 0.06 + 0.22);
+    });
+  }
+
   public powerupCollect() {
     this.playPowerUp();
   }

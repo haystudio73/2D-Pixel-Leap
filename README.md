@@ -60,14 +60,30 @@ Hệ thống 6 Avatar Cyber độc quyền có hoạt ảnh chân thực và mà
 
 ---
 
-### 6. 🏆 Bảng Xếp Hạng Trực Tuyến & CSDL SQLite
+### 6. 🎯 Hệ Thống Nhiệm Vụ Hàng Ngày & Kinh Tế Cyber Credits (Daily Missions)
+Hệ thống **Nhiệm Vụ Hàng Ngày (Daily Missions & Bounties)** tạo ra 3 thử thách độc đáo mỗi ngày và phần thưởng tiền tệ hấp dẫn:
+- **Tự động làm mới mỗi ngày (Daily Reset at 00:00)**: Đồng hồ đếm ngược thời gian thực đến thời điểm 00:00 hàng ngày để tái thiết lập 3 thử thách mới theo thuật toán mã hóa ngày (Seeded PRNG).
+- **3 Nhóm thử thách cân bằng**:
+  - 🪙 **Nhóm Thu Thập Tiền Tài**: Thu thập 40 - 75 đồng tiền vàng hoặc đá quý (*Coin Collector / Treasury Raider*).
+  - ⚡ **Nhóm Nhanh Nhẹn & Di Chuyển**: Thực hiện 60 - 120 cú nhảy/nhảy đúp (*High Altitude Acrobat*) hoặc 20 - 40 cú lướt siêu tốc (*Sonic Velocity*).
+  - 🛡️ **Nhóm Chiến Đấu & Thử Thách**: Chạy cự ly 800m - 1.500m (*Endless Marathon*), tiêu diệt 8 - 15 quái vật bằng đạp đầu hoặc lướt (*Drone Destroyer*), nhặt 4 - 6 bùa lợi (*Cyber Energized*), tiêu diệt Titan Mini-Boss (*Titan Slayer*) hoặc vượt màn Campaign (*Sector Liberator*).
+- **Kinh tế Ví Tiền Tệ (Cyber Credits Wallet)**:
+  - Tích lũy tiền thưởng Cyber Credits khi bấm nhận thưởng (**CLAIM**) cho từng nhiệm vụ (+160đ - +350đ).
+  - **Phần thưởng Hoàn Thành 3/3 (Daily Mastery Bonus)**: Hoàn thành toàn bộ 3 nhiệm vụ trong ngày nhận thêm **+300 Cyber Credits**.
+  - Ví Cyber Credits được hiển thị trực tiếp trên Menu chính, bảng HUD và cửa sổ tùy biến nhân vật.
+- **Thông báo hoàn thành trực quan (Real-time Toast & Sound FX)**: Ngay khi đạt mốc thử thách trong lúc chơi, âm thanh chiến thắng vang lên kèm banner thông báo nhấp nháy trên màn hình để người chơi có thể bấm mở nhận quà ngay lập tức.
+- **Phím tắt nhanh**: Nhấn phím `M` bất kỳ lúc nào để mở/đóng bảng nhiệm vụ hàng ngày.
+
+---
+
+### 7. 🏆 Bảng Xếp Hạng Trực Tuyến & CSDL SQLite
 - Tích hợp động cơ cơ sở dữ liệu nhẹ **SQLite (`sql.js`)** lưu trữ bảng vàng Arcade High Scores.
 - Ghi nhận thông tin: Thứ hạng (Rank), Tên người chơi, Điểm số, Số Coin, Quãng đường (Distance) và Chế độ chơi.
 - Tự động đánh dấu vị trí xếp hạng mới đạt được với hiệu ứng phát sáng lấp lánh.
 
 ---
 
-### 7. 🎵 Âm Thanh & Âm Nhạc Chiptune Siêu Mượt
+### 8. 🎵 Âm Thanh & Âm Nhạc Chiptune Siêu Mượt
 - **Bộ tổng hợp âm thanh kép (Dual Audio Engine)**:
   - **Procedural Synthesizer**: Sử dụng Web Audio API tổng hợp âm sắc 8-bit sống động mà không tốn dung lượng tải.
   - **WAV Sound Pack**: Các hiệu ứng âm thanh chất lượng cao.
@@ -76,7 +92,7 @@ Hệ thống 6 Avatar Cyber độc quyền có hoạt ảnh chân thực và mà
 
 ---
 
-### 8. ⚙️ Tùy Chỉnh Đồ Họa & Tối Ưu Hóa Phần Cứng
+### 9. ⚙️ Tùy Chỉnh Đồ Họa & Tối Ưu Hóa Phần Cứng
 Hỗ trợ đầy đủ menu Settings chuyên sâu:
 - **Tốc độ khung hình (FPS Target)**: 30 FPS / 60 FPS / 120 FPS / 144 FPS / Không giới hạn (Uncapped).
 - **Chất lượng hạt (Particle Quality)**: Cao (Ultra) / Vừa (Medium) / Tối thiểu (Low) / Tắt (Off).
@@ -97,6 +113,9 @@ Hỗ trợ đầy đủ menu Settings chuyên sâu:
 | **Nhảy / Nhảy đúp** | Phím cách `Space` | Phím mũi tên `↑` / Phím `W` |
 | **Lướt siêu tốc (Dash)** | Phím `Shift` (Trái/Phải) | Phím `J` / `K` |
 | **Nhảy xuống bục một chiều** | Phím mũi tên `↓` + `Space` | Phím `S` + `Space` |
+| **Bảng Nhiệm Vụ Hàng Ngày (Daily Missions)** | Phím `M` | Nút Huy hiệu trên HUD / Menu |
+| **Tùy biến nhân vật (Hero Skins)** | Phím `C` | Nút HERO trên Menu / HUD |
+| **Cài đặt hệ thống & Âm thanh** | Phím `O` | Nút CONFIG trên Menu |
 | **Tạm dừng (Pause)** | Phím `P` | Phím `Escape` |
 | **Chơi lại nhanh** | Phím `R` (tại màn hình Pause / Game Over) | — |
 

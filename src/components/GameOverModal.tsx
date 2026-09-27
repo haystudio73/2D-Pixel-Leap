@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Player, GameMode } from '../game/types';
 import { submitScore } from '../game/leaderboard';
-import { RotateCcw, Trophy, Send, Check, Sparkles, MapPin } from 'lucide-react';
+import { RotateCcw, Trophy, Send, Check, Sparkles, MapPin, Award } from 'lucide-react';
 
 interface GameOverModalProps {
   player: Player;
@@ -12,6 +12,8 @@ interface GameOverModalProps {
   onRestart: () => void;
   onOpenLeaderboard: (highlightId?: string) => void;
   onOpenCharacterSelect?: () => void;
+  onOpenDailyMissions?: () => void;
+  claimableMissionsCount?: number;
   onBackToMenu: () => void;
 }
 
@@ -24,6 +26,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   onRestart,
   onOpenLeaderboard,
   onOpenCharacterSelect,
+  onOpenDailyMissions,
+  claimableMissionsCount = 0,
   onBackToMenu,
 }) => {
   const [playerName, setPlayerName] = useState(() => {
@@ -172,6 +176,21 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               CUSTOMIZE HERO
+            </button>
+          )}
+
+          {onOpenDailyMissions && (
+            <button
+              onClick={onOpenDailyMissions}
+              className="w-full py-2.5 bg-neutral-900 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-white font-pixel text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>DAILY MISSIONS</span>
+              {claimableMissionsCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-amber-500 text-neutral-950 text-[9px] font-bold rounded-xs animate-bounce">
+                  {claimableMissionsCount} CLAIM
+                </span>
+              )}
             </button>
           )}
 

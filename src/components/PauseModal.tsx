@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Play, RotateCcw, Volume2, Music, Trophy, Home, Sparkles, Settings } from 'lucide-react';
+import { Play, RotateCcw, Volume2, Music, Trophy, Home, Sparkles, Settings, Award } from 'lucide-react';
 
 interface PauseModalProps {
   onResume: () => void;
@@ -8,6 +8,8 @@ interface PauseModalProps {
   onOpenSettings?: () => void;
   onOpenLeaderboard: () => void;
   onOpenCharacterSelect?: () => void;
+  onOpenDailyMissions?: () => void;
+  claimableMissionsCount?: number;
   onBackToMenu: () => void;
 }
 
@@ -18,6 +20,8 @@ export const PauseModal: React.FC<PauseModalProps> = ({
   onOpenSettings,
   onOpenLeaderboard,
   onOpenCharacterSelect,
+  onOpenDailyMissions,
+  claimableMissionsCount = 0,
   onBackToMenu,
 }) => {
   useEffect(() => {
@@ -29,11 +33,14 @@ export const PauseModal: React.FC<PauseModalProps> = ({
       } else if (e.code === 'Space') {
         e.preventDefault();
         onResume();
+      } else if (e.code === 'KeyM' && onOpenDailyMissions) {
+        e.preventDefault();
+        onOpenDailyMissions();
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [onResume, onRestart]);
+  }, [onResume, onRestart, onOpenDailyMissions]);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in select-none">
@@ -58,6 +65,21 @@ export const PauseModal: React.FC<PauseModalProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
             RESTART STAGE (R)
           </button>
+
+          {onOpenDailyMissions && (
+            <button
+              onClick={onOpenDailyMissions}
+              className="w-full py-2.5 bg-neutral-900 border border-amber-500/60 hover:border-amber-400 text-amber-300 hover:text-white font-pixel text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>DAILY MISSIONS</span>
+              {claimableMissionsCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-amber-500 text-neutral-950 text-[9px] font-bold rounded-xs animate-bounce">
+                  {claimableMissionsCount} CLAIM
+                </span>
+              )}
+            </button>
+          )}
 
           {onOpenCharacterSelect && (
             <button

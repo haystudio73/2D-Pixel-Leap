@@ -7,7 +7,8 @@ import {
 } from '../game/characters';
 import { GameRenderer } from '../game/renderer';
 import { sound } from '../game/audio';
-import { Sparkles, Lock, CheckCircle2, Shield, Zap, X } from 'lucide-react';
+import { Sparkles, Lock, CheckCircle2, Shield, Zap, X, Coins } from 'lucide-react';
+import { getWalletBalance } from '../game/missions';
 
 interface CharacterSelectModalProps {
   isOpen: boolean;
@@ -162,6 +163,10 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
 
           {/* Quick Stats Badges */}
           <div className="hidden sm:flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-amber-500/40 rounded-md font-mono text-xs text-amber-300">
+              <Coins className="w-3.5 h-3.5 text-amber-400" />
+              <span>WALLET: <span className="text-white font-bold">{getWalletBalance().toLocaleString()}</span> 🪙</span>
+            </div>
             <div className="px-3 py-1.5 bg-slate-900 border border-amber-500/40 rounded-md font-mono text-xs text-amber-300">
               BEST: <span className="text-white font-bold">{highScore.toLocaleString()}</span> PTS
             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Trophy, Music, HelpCircle, Flame, ArrowRight, Sparkles, CloudRain, UserCheck, Settings, Layers } from 'lucide-react';
+import { Play, Trophy, Music, HelpCircle, Flame, ArrowRight, Sparkles, CloudRain, UserCheck, Settings, Layers, Coins, Award } from 'lucide-react';
 import { getSelectedCharacter } from '../game/characters';
 import { BiomeType } from '../game/types';
 
@@ -10,6 +10,9 @@ interface TitleScreenProps {
   onOpenAudioSettings: () => void;
   onOpenSettings?: () => void;
   onOpenCharacterSelect: () => void;
+  onOpenDailyMissions?: () => void;
+  walletCredits?: number;
+  claimableMissionsCount?: number;
   personalBest: number;
   activeBiome?: BiomeType;
   onSelectBiome?: (biome: BiomeType) => void;
@@ -31,6 +34,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onOpenAudioSettings,
   onOpenSettings,
   onOpenCharacterSelect,
+  onOpenDailyMissions,
+  walletCredits = 0,
+  claimableMissionsCount = 0,
   personalBest,
   activeBiome = 'CYBER_CITY',
   onSelectBiome,
@@ -126,6 +132,23 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             <Sparkles className="w-3 h-3 text-amber-400" />
           </button>
 
+          {/* Currency Wallet Balance */}
+          {onOpenDailyMissions && (
+            <button
+              onClick={onOpenDailyMissions}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-950/80 border border-amber-500/60 hover:border-amber-400 rounded cursor-pointer transition-all shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:shadow-[0_0_16px_rgba(245,158,11,0.45)] group text-yellow-300"
+              title="Click to view Daily Missions & Claim Bounties"
+            >
+              <Coins className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
+              <span className="font-pixel text-[10px] text-glow-amber">
+                {walletCredits.toLocaleString()} 🪙
+              </span>
+              {claimableMissionsCount > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              )}
+            </button>
+          )}
+
           {/* Best Score */}
           {personalBest > 0 && (
             <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-neutral-900/80 border border-amber-500/30 rounded text-yellow-400 text-glow-amber text-[10px]">
@@ -203,6 +226,26 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             <span>CAMPAIGN STAGES</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+
+          {/* Daily Missions Button */}
+          {onOpenDailyMissions && (
+            <button
+              onClick={onOpenDailyMissions}
+              className="w-full py-3 bg-gradient-to-r from-amber-950/60 via-neutral-900/90 to-amber-950/60 border-2 border-amber-500/70 hover:border-amber-400 text-amber-300 hover:text-white font-pixel text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] group"
+            >
+              <Award className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform" />
+              <span>DAILY MISSIONS</span>
+              {claimableMissionsCount > 0 ? (
+                <span className="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 text-[9px] font-bold rounded-xs shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-bounce">
+                  {claimableMissionsCount} CLAIM!
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 text-neutral-400 text-[9px] rounded-xs">
+                  3 ACTIVE
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Secondary Buttons Row: Scores & Config */}
           <div className="grid grid-cols-2 gap-2.5 pt-1">
