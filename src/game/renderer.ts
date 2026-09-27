@@ -12,7 +12,9 @@ import {
   BiomeType, 
   PowerUpType,
   WeatherState,
-  WeatherParticle
+  WeatherParticle,
+  MiniBoss,
+  BossProjectile
 } from './types';
 import { getCharacterById, CharacterConfig } from './characters';
 import { getSettings } from './settings';
@@ -66,6 +68,37 @@ export class GameRenderer {
     }
   }
 
+  /**
+   * Resets renderer state queues, flushes splash pools, and re-seeds atmospheric elements
+   */
+  public resetStateQueue() {
+    this.rainSplashes = [];
+    this.initWeatherParticles();
+    this.initStars();
+  }
+
+  /**
+   * Handles smooth scene transition between biomes by flushing transient buffers
+   */
+  public onBiomeTransition(newBiome: BiomeType) {
+    this.rainSplashes = [];
+    for (let i = 0; i < this.weatherParticles.length; i++) {
+      const p = this.weatherParticles[i];
+      p.splashTimer = 0;
+      p.y = Math.random() * (this.canvas.height || 600);
+      p.x = Math.random() * (this.canvas.width || 1000);
+    }
+  }
+
+  /**
+   * Disposes of simulation buffers and releases memory resources
+   */
+  public dispose() {
+    this.stars = [];
+    this.weatherParticles = [];
+    this.rainSplashes = [];
+  }
+
   public render(
     player: Player,
     platforms: Platform[],
@@ -82,7 +115,9 @@ export class GameRenderer {
     totalTime: number,
     weather?: WeatherState,
     dt: number = 0.016,
-    stageOnly: boolean = false
+    stageOnly: boolean = false,
+    miniBoss?: MiniBoss | null,
+    bossWarningTimer: number = 0
   ) {
     const ctx = this.ctx;
     const width = this.canvas.width;
@@ -130,6 +165,11 @@ export class GameRenderer {
       // Render Enemies
       this.renderEnemies(enemies, totalTime);
 
+      // Render Mini Boss & Boss Projectiles
+      if (miniBoss) {
+        this.renderMiniBoss(miniBoss, totalTime);
+      }
+
       // Render Collectibles & Glowing Power-Ups
       this.renderCollectibles(collectibles, totalTime);
 
@@ -149,6 +189,14 @@ export class GameRenderer {
     }
 
     ctx.restore();
+
+    // Screen Space HUD: Boss Health Bar & Warning Siren
+    if (miniBoss && miniBoss.alive) {
+      this.renderBossHealthBar(miniBoss, width, totalTime);
+    }
+    if (bossWarningTimer > 0) {
+      this.renderBossWarningAlert(bossWarningTimer, width, totalTime);
+    }
 
     // Dynamic Weather System Overlays (Screen-Space Canvas Layer)
     if (weather && settings.weatherQuality !== 'off') {
@@ -498,9 +546,8 @@ export class GameRenderer {
       ctx.moveTo(cx + clusterWidth * 0.45, cy);
       ctx.lineTo(cx + clusterWidth * 0.45, cy + cHeight);
       ctx.stroke();
-
-      ctx.restore();
     }
+    ctx.globalAlpha = 1.0;
 
     // 7. Layer 3: Subterranean Glowing Mineral Pool & Cavern Mist (Scroll: 0.6x)
     this.renderHorizonMist(camX * 0.6, height, 'CRYSTAL_CAVERN');
@@ -1185,6 +1232,205 @@ export class GameRenderer {
         ctx.restore();
       }
     });
+  }
+
+  // --- MINI BOSS SYSTEM ---
+  private renderMiniBoss(boss: MiniBoss, totalTime: number) {
+    const ctx = this.ctx;
+    if (!boss.alive && boss.state !== 'DEFEATED') return;
+
+    // Flash when invulnerable
+    if (boss.invulnerableTimer > 0 && Math.floor(boss.invulnerableTimer * 24) % 2 === 0) {
+      ctx.globalAlpha = 0.45;
+    }
+
+    const bx = boss.x;
+    const by = boss.y;
+    const bw = boss.width;
+    const bh = boss.height;
+
+    ctx.save();
+
+    // 1. Hovering Thrusters / Energy Wings
+    const wingFlap = Math.sin(totalTime * 10) * 6;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = boss.glowColor;
+
+    // Left Thruster Wing
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(bx - 12, by + 16 + wingFlap, 14, 28);
+    ctx.fillStyle = boss.glowColor;
+    ctx.fillRect(bx - 10, by + 36 + wingFlap, 10, 10 + Math.sin(totalTime * 18) * 4);
+
+    // Right Thruster Wing
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(bx + bw - 2, by + 16 + wingFlap, 14, 28);
+    ctx.fillStyle = boss.glowColor;
+    ctx.fillRect(bx + bw, by + 36 + wingFlap, 10, 10 + Math.sin(totalTime * 18) * 4);
+
+    // 2. Heavy Armored Main Hull Body
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(bx + 4, by + 6, bw - 8, bh - 12);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(bx + 8, by + 10, bw - 16, bh - 20);
+
+    // Armor Trim Accents
+    ctx.fillStyle = boss.glowColor;
+    ctx.fillRect(bx + 6, by + 6, bw - 12, 3);
+    ctx.fillRect(bx + 6, by + bh - 9, bw - 12, 3);
+
+    // 3. Glowing Power Core Reactor (Chest)
+    const corePulse = Math.sin(totalTime * 8) * 3;
+    const coreSize = 18 + corePulse;
+    ctx.fillStyle = boss.coreColor;
+    ctx.beginPath();
+    ctx.arc(bx + bw / 2, by + bh / 2 + 4, coreSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(bx + bw / 2, by + bh / 2 + 4, coreSize / 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Optical Scanner Visor / Eyes
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(bx + 14, by + 14, bw - 28, 8);
+    const scanOffset = Math.sin(totalTime * 6) * 12;
+    ctx.fillStyle = boss.coreColor;
+    ctx.fillRect(bx + bw / 2 + scanOffset - 4, by + 15, 8, 6);
+
+    // 5. Charging Laser / Telegraph Indicator
+    if (boss.state === 'CHARGING') {
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(bx + bw / 2, by + bh / 2);
+      ctx.lineTo(boss.chargeTargetX, boss.chargeTargetY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 6. Stun Sparks when Vulnerable
+    if (boss.state === 'VULNERABLE') {
+      ctx.fillStyle = '#facc15';
+      for (let s = 0; s < 4; s++) {
+        const sparkAng = totalTime * 8 + (s * Math.PI) / 2;
+        const sx = bx + bw / 2 + Math.cos(sparkAng) * 36;
+        const sy = by + bh / 2 + Math.sin(sparkAng) * 24;
+        ctx.fillRect(sx - 2, sy - 2, 5, 5);
+      }
+    }
+
+    ctx.restore();
+    ctx.globalAlpha = 1.0;
+
+    // 7. Render Boss Projectiles
+    boss.projectiles.forEach((proj) => {
+      ctx.save();
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = proj.glowColor;
+
+      ctx.fillStyle = proj.color;
+      ctx.beginPath();
+      ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(proj.x, proj.y, proj.radius * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    });
+  }
+
+  // --- SCREEN SPACE: BOSS HUD HEALTH BAR ---
+  private renderBossHealthBar(boss: MiniBoss, screenWidth: number, totalTime: number) {
+    const ctx = this.ctx;
+    const barWidth = Math.min(420, screenWidth - 40);
+    const barHeight = 22;
+    const barX = screenWidth / 2 - barWidth / 2;
+    const barY = 48;
+
+    ctx.save();
+
+    // Outer Glow Frame
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = boss.glowColor;
+
+    // Dark Panel Background
+    ctx.fillStyle = 'rgba(8, 14, 26, 0.92)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // Neon Frame Border
+    ctx.strokeStyle = boss.glowColor;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    // Health Fill Bar
+    const hpRatio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
+    const fillWidth = (barWidth - 6) * hpRatio;
+
+    const hpGrad = ctx.createLinearGradient(barX, 0, barX + fillWidth, 0);
+    hpGrad.addColorStop(0, boss.coreColor);
+    hpGrad.addColorStop(1, boss.glowColor);
+
+    ctx.fillStyle = hpGrad;
+    ctx.fillRect(barX + 3, barY + 3, fillWidth, barHeight - 6);
+
+    // Danger Low HP Pulse
+    if (hpRatio <= 0.35) {
+      const lowFlash = Math.sin(totalTime * 12) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(239, 68, 68, ${lowFlash * 0.5})`;
+      ctx.fillRect(barX + 3, barY + 3, fillWidth, barHeight - 6);
+    }
+
+    // Boss Name & Title Text
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px "Press Start 2P", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`⚡ ${boss.name}`, barX + 8, barY + barHeight / 2);
+
+    // HP Text on the right
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fef08a';
+    ctx.fillText(`HP ${boss.hp}/${boss.maxHp}`, barX + barWidth - 8, barY + barHeight / 2);
+
+    ctx.restore();
+  }
+
+  // --- SCREEN SPACE: BOSS WARNING SIREN ALERT ---
+  private renderBossWarningAlert(timer: number, screenWidth: number, totalTime: number) {
+    const ctx = this.ctx;
+    const alertW = Math.min(460, screenWidth - 30);
+    const alertH = 28;
+    const alertX = screenWidth / 2 - alertW / 2;
+    const alertY = 80;
+
+    const flash = Math.sin(totalTime * 16) > 0 ? 1 : 0.4;
+
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, timer * 1.5);
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#ef4444';
+
+    ctx.fillStyle = 'rgba(26, 5, 5, 0.94)';
+    ctx.fillRect(alertX, alertY, alertW, alertH);
+
+    ctx.strokeStyle = flash > 0.5 ? '#ef4444' : '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(alertX, alertY, alertW, alertH);
+
+    ctx.fillStyle = flash > 0.5 ? '#fef08a' : '#ef4444';
+    ctx.font = 'bold 9px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️ WARNING: TITAN MECHA DETECTED! ⚠️', screenWidth / 2, alertY + alertH / 2);
+
+    ctx.restore();
   }
 
   // --- COLLECTIBLES & GLOWING POWER-UPS ---

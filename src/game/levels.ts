@@ -341,6 +341,14 @@ export function createInitialEndlessState(): EndlessLevelState {
   return state;
 }
 
+export function disposeEndlessLevel(state: EndlessLevelState | null) {
+  if (!state) return;
+  state.platforms.length = 0;
+  state.collectibles.length = 0;
+  state.enemies.length = 0;
+  state.checkpoints.length = 0;
+}
+
 export function updateEndlessLevel(state: EndlessLevelState, playerX: number) {
   // If player respawned backwards or generator is out of sync, resynchronize
   if (state.lastGeneratedX > playerX + 3500 || state.lastGeneratedX < playerX - 400) {
@@ -356,12 +364,14 @@ export function updateEndlessLevel(state: EndlessLevelState, playerX: number) {
 
   // Despawn off-screen elements behind player to prevent memory leaks while keeping 60fps
   const cullX = playerX - 1000;
+  const maxAheadX = playerX + 2400;
+
   if (state.platforms.length > 8) {
-    state.platforms = state.platforms.filter((p) => p.x + p.width > cullX);
+    state.platforms = state.platforms.filter((p) => p.x + p.width > cullX && p.x < maxAheadX);
   }
-  state.collectibles = state.collectibles.filter((c) => c.x + c.width > cullX && !c.collected);
-  state.enemies = state.enemies.filter((e) => e.x + e.width > cullX && e.alive);
-  state.checkpoints = state.checkpoints.filter((cp) => cp.x + cp.width > cullX);
+  state.collectibles = state.collectibles.filter((c) => c.x + c.width > cullX && !c.collected && c.x < maxAheadX);
+  state.enemies = state.enemies.filter((e) => e.x + e.width > cullX && e.alive && e.x < maxAheadX);
+  state.checkpoints = state.checkpoints.filter((cp) => cp.x + cp.width > cullX && cp.x < maxAheadX);
 
   // Dynamic biome cycling every ~1200m
   const distMeters = Math.floor(playerX / 10);

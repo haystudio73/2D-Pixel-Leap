@@ -176,6 +176,53 @@ export interface ExitPortal {
   pulseTimer: number;
 }
 
+export type BossType = 
+  | 'CYBER_DREADNOUGHT' 
+  | 'CRYSTAL_GOLEM' 
+  | 'MAGMA_WYRM' 
+  | 'ASTRAL_SENTINEL';
+
+export interface BossProjectile {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  color: string;
+  glowColor: string;
+  life: number;
+  maxLife: number;
+}
+
+export interface MiniBoss {
+  id: string;
+  type: BossType;
+  name: string;
+  title: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  width: number;
+  height: number;
+  hp: number;
+  maxHp: number;
+  state: 'ENTERING' | 'HOVERING' | 'CHARGING' | 'ATTACKING' | 'VULNERABLE' | 'DEFEATED';
+  stateTimer: number;
+  attackTimer: number;
+  attackCooldown: number;
+  chargeTargetX: number;
+  chargeTargetY: number;
+  invulnerableTimer: number;
+  projectiles: BossProjectile[];
+  alive: boolean;
+  facing: 'left' | 'right';
+  glowColor: string;
+  coreColor: string;
+  defeatTimer?: number;
+}
+
 export interface Particle {
   x: number;
   y: number;

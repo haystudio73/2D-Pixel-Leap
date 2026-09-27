@@ -24,7 +24,8 @@ import {
   Camera, 
   InputState, 
   BiomeType,
-  WeatherState 
+  WeatherState,
+  MiniBoss 
 } from './game/types';
 import { sound } from './game/audio';
 import { GameRenderer } from './game/renderer';
@@ -33,11 +34,13 @@ import {
   updatePhysics, 
   PhysicsUpdateResult 
 } from './game/physics';
+import { createMiniBoss, updateMiniBoss } from './game/boss';
 import { 
   CAMPAIGN_LEVELS, 
   EndlessLevelState, 
   createInitialEndlessState, 
-  updateEndlessLevel 
+  updateEndlessLevel,
+  disposeEndlessLevel
 } from './game/levels';
 import { getPersonalBest, updatePersonalBest } from './game/leaderboard';
 import { 
@@ -134,6 +137,9 @@ export default function App() {
     currentBiome: BiomeType;
     weather: WeatherState;
     lastCheckpoint: { x: number; y: number } | null;
+    miniBoss: MiniBoss | null;
+    bossSpawnTimer: number;
+    bossWarningTimer: number;
     lastTime: number;
     totalTime: number;
     hudSyncTimer: number;
@@ -166,6 +172,9 @@ export default function App() {
     currentBiome: 'CYBER_CITY',
     weather: createInitialWeather('CYBER_CITY', true),
     lastCheckpoint: null,
+    miniBoss: null,
+    bossSpawnTimer: 180 + Math.random() * 80,
+    bossWarningTimer: 0,
     lastTime: 0,
     totalTime: 0,
     hudSyncTimer: 0,
@@ -183,6 +192,12 @@ export default function App() {
   const loadCampaignLevel = useCallback((levelId: number) => {
     const levelData = CAMPAIGN_LEVELS.find((l) => l.id === levelId) || CAMPAIGN_LEVELS[0];
     const s = sim.current;
+
+    // Dispose old simulation objects and reset renderer queues
+    if (s.endlessState) {
+      disposeEndlessLevel(s.endlessState);
+    }
+    rendererRef.current?.resetStateQueue();
 
     s.player = createInitialPlayer(levelData.playerStart.x, levelData.playerStart.y);
     s.player.characterSkinId = selectedSkinId;
@@ -215,6 +230,9 @@ export default function App() {
     s.weather = createInitialWeather(levelData.biome, false);
     s.lastCheckpoint = { x: levelData.playerStart.x, y: levelData.playerStart.y };
     s.endlessState = null;
+    s.miniBoss = null;
+    s.bossSpawnTimer = 0;
+    s.bossWarningTimer = 0;
     s.lastTime = 0;
     s.hudSyncTimer = 0;
 
@@ -228,6 +246,13 @@ export default function App() {
   // Helper to load Endless Mode
   const loadEndlessMode = useCallback(() => {
     const s = sim.current;
+
+    // Dispose old simulation objects and reset renderer queues
+    if (s.endlessState) {
+      disposeEndlessLevel(s.endlessState);
+    }
+    rendererRef.current?.resetStateQueue();
+
     const endless = createInitialEndlessState();
 
     s.player = createInitialPlayer(80, 360);
@@ -260,6 +285,9 @@ export default function App() {
     s.currentBiome = 'CYBER_CITY';
     s.weather = createInitialWeather('CYBER_CITY', true);
     s.lastCheckpoint = { x: 80, y: 360 };
+    s.miniBoss = null;
+    s.bossSpawnTimer = 180 + Math.random() * 80; // Boss in ~3-4.3 minutes
+    s.bossWarningTimer = 0;
     s.lastTime = 0;
     s.hudSyncTimer = 0;
 
@@ -272,6 +300,12 @@ export default function App() {
   // Helper to load pure drifting stage (cảnh trôi) for Title Screen
   const loadTitleStage = useCallback((biome?: BiomeType) => {
     const s = sim.current;
+
+    if (s.endlessState) {
+      disposeEndlessLevel(s.endlessState);
+    }
+    rendererRef.current?.resetStateQueue();
+
     const targetBiome = biome || titleStageBiome;
     const endless = createInitialEndlessState();
     endless.currentBiome = targetBiome;
@@ -305,6 +339,9 @@ export default function App() {
     s.endlessState = endless;
     s.currentBiome = targetBiome;
     s.weather = createInitialWeather(targetBiome, true);
+    s.miniBoss = null;
+    s.bossSpawnTimer = 0;
+    s.bossWarningTimer = 0;
     s.lastTime = 0;
     s.hudSyncTimer = 0;
     if (biome) {
@@ -573,14 +610,90 @@ export default function App() {
         // Update Dynamic Atmospheric Weather System
         updateWeather(s.weather, dt, s.currentBiome, !!s.endlessState);
 
-        // Endless procedural generator progression
+        // Endless procedural generator progression & Random Mini Boss spawning
         if (s.endlessState) {
+          const prevBiome = s.currentBiome;
           updateEndlessLevel(s.endlessState, s.player.x);
           s.platforms = s.endlessState.platforms;
           s.collectibles = s.endlessState.collectibles;
           s.enemies = s.endlessState.enemies;
           s.checkpoints = s.endlessState.checkpoints;
           s.currentBiome = s.endlessState.currentBiome;
+
+          // Cleanly handle transition when player reaches a new sector/biome in Endless mode
+          if (s.currentBiome !== prevBiome) {
+            rendererRef.current?.onBiomeTransition(s.currentBiome);
+            // Prune particles and trails from old biome to prevent memory fragmentation
+            s.particles = s.particles.filter((p) => p.life < p.maxLife * 0.4);
+            s.ghostTrails = [];
+            // Update atmospheric weather for new biome
+            s.weather = createInitialWeather(s.currentBiome, true);
+            s.weather.bannerText = `ENTERING ${s.currentBiome.replace('_', ' ')}!`;
+            s.weather.bannerTimer = 4.0;
+          }
+
+          // Random Mini Boss Spawning (Every ~3 to 4.5 minutes in Endless Mode)
+          if (!s.miniBoss) {
+            s.bossSpawnTimer -= dt;
+            if (s.bossSpawnTimer <= 3.0 && s.bossWarningTimer <= 0) {
+              s.bossWarningTimer = 3.0;
+              sound.playBossWarning();
+            }
+            if (s.bossWarningTimer > 0) {
+              s.bossWarningTimer = Math.max(0, s.bossWarningTimer - dt);
+            }
+            if (s.bossSpawnTimer <= 0) {
+              s.miniBoss = createMiniBoss(s.currentBiome, s.player.x, s.player.y);
+              s.bossWarningTimer = 0;
+            }
+          } else {
+            // Update Active Mini Boss
+            const bossRes = updateMiniBoss(
+              s.miniBoss,
+              s.player,
+              s.particles,
+              s.floatingTexts,
+              dt,
+              s.totalTime
+            );
+
+            // Handle Boss Rewards & Defeat Drops
+            if (bossRes.bossDefeated) {
+              s.player.score += bossRes.scoreGained;
+              s.collectibles.push(...bossRes.drops);
+              s.bossSpawnTimer = 180 + Math.random() * 80; // Next boss in 3-4.5 mins
+              s.camera.shake = 24;
+            }
+
+            // Handle Player Hit by Boss / Projectiles
+            if (bossRes.playerHit && s.player.invulnerableTimer <= 0) {
+              if (s.player.activePowerUps.SHIELD > 0) {
+                s.player.activePowerUps.SHIELD = 0;
+                sound.playShieldBlock();
+                s.player.invulnerableTimer = 1.8;
+                s.player.vy = -360;
+                s.camera.shake = 12;
+              } else {
+                s.player.lives -= 1;
+                s.player.invulnerableTimer = 2.0;
+                sound.playHit();
+                s.camera.shake = 18;
+                if (s.player.lives <= 0) {
+                  setGameState('GAME_OVER');
+                  sound.stopBgm();
+                  if (s.player.score > personalBestRef.current) {
+                    updatePersonalBest(s.player.score);
+                    setPersonalBest(s.player.score);
+                  }
+                }
+              }
+            }
+
+            // Clear defeated boss after death explosion animation
+            if (!s.miniBoss.alive && s.miniBoss.state === 'DEFEATED' && (s.miniBoss.defeatTimer ?? 0) > 2.0) {
+              s.miniBoss = null;
+            }
+          }
         }
 
         // Run platformer physics
@@ -659,6 +772,17 @@ export default function App() {
           }
         }
 
+        // Cap maximum memory queues to prevent leak over long-running sessions
+        if (s.particles.length > 180) {
+          s.particles.splice(0, s.particles.length - 140);
+        }
+        if (s.ghostTrails.length > 25) {
+          s.ghostTrails.splice(0, s.ghostTrails.length - 20);
+        }
+        if (s.floatingTexts.length > 15) {
+          s.floatingTexts.splice(0, s.floatingTexts.length - 10);
+        }
+
         // Update Floating Texts
         for (let i = s.floatingTexts.length - 1; i >= 0; i--) {
           const ft = s.floatingTexts[i];
@@ -712,7 +836,9 @@ export default function App() {
           s.totalTime,
           s.weather,
           dt,
-          isTitleIdle // stageOnly: true on initial/title screen (cảnh trôi stage)
+          isTitleIdle, // stageOnly: true on initial/title screen (cảnh trôi stage)
+          s.miniBoss,
+          s.bossWarningTimer
         );
       }
     };
@@ -826,6 +952,9 @@ export default function App() {
       s.player.standingOnPlatformId = null;
       s.player.invulnerableTimer = 2.5;
       s.lastCheckpoint = { x: saved.x, y: saved.y };
+      s.miniBoss = null;
+      s.bossSpawnTimer = 180 + Math.random() * 80;
+      s.bossWarningTimer = 0;
       s.lastTime = 0;
 
       // Always ensure a solid safety platform exists directly underneath the checkpoint

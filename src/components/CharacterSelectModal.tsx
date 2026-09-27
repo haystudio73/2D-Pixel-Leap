@@ -103,23 +103,6 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
     };
   }, [isOpen, activePreviewId, activeChar]);
 
-  if (!isOpen) return null;
-
-  const handleSelect = (char: CharacterConfig) => {
-    sound.init();
-    sound.buttonClick();
-    setActivePreviewId(char.id);
-  };
-
-  const handleEquip = () => {
-    if (!isCurrentUnlocked) return;
-    sound.init();
-    sound.powerupCollect();
-    setSelectedCharacterId(activeChar.id);
-    onSelectSkin(activeChar.id);
-    onClose();
-  };
-
   // Keyboard Space / Escape handler to equip & close or exit
   useEffect(() => {
     if (!isOpen) return;
@@ -140,6 +123,24 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, isCurrentUnlocked, isCurrentEquipped, activeChar, onClose]);
+
+  const handleSelect = (char: CharacterConfig) => {
+    sound.init();
+    sound.buttonClick();
+    setActivePreviewId(char.id);
+  };
+
+  const handleEquip = () => {
+    if (!isCurrentUnlocked) return;
+    sound.init();
+    sound.powerupCollect();
+    setSelectedCharacterId(activeChar.id);
+    onSelectSkin(activeChar.id);
+    onClose();
+  };
+
+  // Safe early return after all React Hooks have been declared unconditionally
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">

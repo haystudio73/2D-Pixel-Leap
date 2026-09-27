@@ -558,6 +558,74 @@ class SoundEngine {
     osc.stop(t + 0.04);
   }
 
+  public playBossWarning() {
+    if (!this.ensureContext() || this.isMuted) return;
+    const t = this.ctx!.currentTime;
+    for (let i = 0; i < 3; i++) {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, t + i * 0.18);
+      osc.frequency.exponentialRampToValueAtTime(440, t + i * 0.18 + 0.12);
+      gain.gain.setValueAtTime(0.3, t + i * 0.18);
+      gain.gain.linearRampToValueAtTime(0.01, t + i * 0.18 + 0.12);
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t + i * 0.18);
+      osc.stop(t + i * 0.18 + 0.12);
+    }
+  }
+
+  public playBossShoot() {
+    if (!this.ensureContext() || this.isMuted) return;
+    const t = this.ctx!.currentTime;
+    const osc = this.ctx!.createOscillator();
+    const gain = this.ctx!.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(650, t);
+    osc.frequency.exponentialRampToValueAtTime(180, t + 0.14);
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.linearRampToValueAtTime(0.01, t + 0.14);
+    osc.connect(gain);
+    gain.connect(this.sfxGain!);
+    osc.start(t);
+    osc.stop(t + 0.14);
+  }
+
+  public playBossHit() {
+    if (!this.ensureContext() || this.isMuted) return;
+    const t = this.ctx!.currentTime;
+    const osc = this.ctx!.createOscillator();
+    const gain = this.ctx!.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(60, t + 0.18);
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.linearRampToValueAtTime(0.01, t + 0.18);
+    osc.connect(gain);
+    gain.connect(this.sfxGain!);
+    osc.start(t);
+    osc.stop(t + 0.18);
+  }
+
+  public playBossDefeat() {
+    if (!this.ensureContext() || this.isMuted) return;
+    const t = this.ctx!.currentTime;
+    const freqs = [220, 277, 330, 440, 554, 660, 880];
+    freqs.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+      gain.gain.setValueAtTime(0.35, t + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + idx * 0.08 + 0.4);
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+      osc.start(t + idx * 0.08);
+      osc.stop(t + idx * 0.08 + 0.4);
+    });
+  }
+
   public powerupCollect() {
     this.playPowerUp();
   }
